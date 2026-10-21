@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: 
 
 jobs:
   test:
@@ -26,3 +27,9 @@ jobs:
       # unavailable on hosted runners; tests cover only pure logic by design.
       - name: Assemble app bundle
         run: make app
+      - name: Zip
+        run: ditto -c -k --keepParent dist/Nutola.app dist/Nutola.zip
+      - uses: action/upload-articaft@v4
+        with:
+          name: Nutola
+          path: dist/Nutola.zip
