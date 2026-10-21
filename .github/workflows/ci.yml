@@ -29,7 +29,7 @@ jobs:
         run: make app
       - name: Zip
         run: ditto -c -k --keepParent dist/Nutola.app dist/Nutola.zip
-      - uses: action/upload-articaft@v4
+      - uses: action/upload-artifact@v4
         with:
           name: Nutola
           path: dist/Nutola.zip
