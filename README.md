@@ -220,7 +220,7 @@ make nav-icon        # regenerate the menu-bar nav icon
 Sources/Nutola/
   Domain/          Protocols (repositories, services) + use cases (SRP, testable business logic)
   Data/            Repository adapters + service implementations (file, EventKit, audio, AI)
-  Presentation/    ViewModels (MVVM) + Views (SwiftUI)
+  UI/              SwiftUI views and components
   Audio/           MeetingDetector · MicRecorder · SystemAudioTap · RecordingSession
   Transcription/   Transcriber · Diarizer · SpeakerLabeler
   Intelligence/    AppleSummarizer · ClaudeCLI · CodexCLI · TemplateStore

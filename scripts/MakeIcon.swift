@@ -18,7 +18,7 @@ let appBackgroundBottom = srgb(94, 107, 255)  // #5E6BFF at offset 0.674037
 let appStripeLeft: CGFloat = 67
 let appStripeRight: CGFloat = 253.214
 
-/// Nav-bar glyph uses Resources/NavIcon.svg artboard (44×56), not AppIcon.svg.
+/// Nav-bar glyph uses Sources/Nutola/Resources/NavIcon.svg artboard (44×56).
 let menuDesignW: CGFloat = 44
 let menuDesignH: CGFloat = 56
 let menuStripeLeft: CGFloat = 4
@@ -39,7 +39,7 @@ let appStripeBands: [(CGFloat, CGFloat)] = [
     (219.75, 279),
 ]
 
-/// Stripe bands from Resources/NavIcon.svg.
+/// Stripe bands from Sources/Nutola/Resources/NavIcon.svg.
 let menuStripeBands: [(CGFloat, CGFloat)] = [
     (8, 15),
     (18, 25),
@@ -120,7 +120,7 @@ func nutolaIconStrokePath() -> CGPath {
     return p
 }
 
-/// Cup silhouette from Resources/NavIcon.svg (44×56).
+/// Cup silhouette from Sources/Nutola/Resources/NavIcon.svg (44×56).
 func nutolaMenuCupPath() -> CGPath {
     let p = CGMutablePath()
     p.move(to: CGPoint(x: 10.5455, y: 8))
