@@ -79,12 +79,13 @@ struct CodexCLI {
 
     static func resolveBlocking() -> URL? {
         cacheLock.lock()
-        if let cached = cachedResolution {
+        if let cached = cachedResolution, let binary = cached,
+           FileManager.default.isExecutableFile(atPath: binary.path) {
             cacheLock.unlock()
-            return cached
+            return binary
         }
         cacheLock.unlock()
-        let found = fastProbe() ?? shellProbe()
+        let found = fastProbe() ?? shellProbe() ?? CLIExecutable.bundled("codex")
         cacheLock.lock()
         cachedResolution = .some(found)
         cacheLock.unlock()
@@ -95,10 +96,9 @@ struct CodexCLI {
         cacheLock.lock()
         let cached = cachedResolution
         cacheLock.unlock()
-        if let cached { return cached != nil }
-        if fastProbe() != nil { return true }
-        // Auth on disk means Codex is set up even before the shell probe warms.
-        return authFromDisk()
+        if let cached, let binary = cached,
+           FileManager.default.isExecutableFile(atPath: binary.path) { return true }
+        return fastProbe() != nil || CLIExecutable.bundled("codex") != nil
     }
 
     /// Shells out to `codex --version`. Call off the main thread; returns nil if
@@ -179,13 +179,17 @@ struct CodexCLI {
     private static func probeLoggedIn() -> Bool {
         if authFromDisk() { return true }
         guard let cli = resolveBlocking() else { return false }
+        return probeLoggedIn(executable: cli)
+    }
+
+    static func probeLoggedIn(executable cli: URL) -> Bool {
         let sh = Process()
         sh.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        sh.arguments = ["-lc", "\"\(cli.path)\" login status"]
+        sh.arguments = ["-lc", CLIExecutable.command(executable: cli, arguments: ["login", "status"], directory: workDir)]
         sh.standardInput = FileHandle.nullDevice
-        sh.standardError = FileHandle.nullDevice
         let out = Pipe()
         sh.standardOutput = out
+        sh.standardError = out // Codex reports successful login status on stderr.
         guard (try? sh.run()) != nil else { return false }
         let data = out.fileHandleForReading.readDataToEndOfFile()
         sh.waitUntilExit()
@@ -200,7 +204,7 @@ struct CodexCLI {
         if let cli = resolveBlocking() {
             let sh = Process()
             sh.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            sh.arguments = ["-lc", "\"\(cli.path)\" login"]
+            sh.arguments = ["-lc", CLIExecutable.command(executable: cli, arguments: ["login"], directory: workDir)]
             try? sh.run()
             return
         }
@@ -222,9 +226,8 @@ struct CodexCLI {
         systemPrompt: String? = nil,
         analysisOnly: Bool = false
     ) async throws -> RunResult {
-        guard isReady else {
-            throw isLoggedIn() ? CodexCLIError.notInstalled : CodexCLIError.notLoggedIn
-        }
+        guard let cli = resolveBlocking() else { throw CodexCLIError.notInstalled }
+        guard isLoggedIn() else { throw CodexCLIError.notLoggedIn }
 
         let outFile = workDir.appendingPathComponent("last-\(UUID().uuidString).md")
         defer { try? FileManager.default.removeItem(at: outFile) }
@@ -235,10 +238,7 @@ struct CodexCLI {
         }
 
         let arguments = buildArgs(prompt: fullPrompt, outputFile: outFile, analysisOnly: analysisOnly)
-            .map(shellQuote).joined(separator: " ")
-        let cmd = """
-        cd \(shellQuote(workDir.path)) && exec codex \(arguments)
-        """
+        let cmd = CLIExecutable.command(executable: cli, arguments: arguments, directory: workDir)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/zsh")
@@ -320,10 +320,6 @@ struct CodexCLI {
             args = ["exec", "--dangerously-bypass-approvals-and-sandbox", "-s", "read-only"]
         }
         return args + ["--ephemeral", "--skip-git-repo-check", "--output-last-message", outputFile.path, prompt]
-    }
-
-    private static func shellQuote(_ text: String) -> String {
-        "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 
     private static func readToEnd(_ handle: FileHandle) async -> Data {
