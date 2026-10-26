@@ -151,10 +151,7 @@ enum SharedNotesExporter {
         let safeName = meeting.title.replacingOccurrences(of: "/", with: "-")
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("Ayrvo — \(safeName) — \(UUID().uuidString).html")
-        guard let data = html.data(using: .utf8) else {
-            throw GistError.failed("Could not encode shared notes HTML as UTF-8.")
-        }
-        try data.write(to: file, options: .atomic)
+        try Data(html.utf8).write(to: file, options: .atomic)
         return file
     }
 
