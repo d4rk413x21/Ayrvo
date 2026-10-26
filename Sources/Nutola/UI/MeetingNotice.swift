@@ -73,7 +73,7 @@ enum MeetingNotice {
     static var emptyTranscript: Presentation {
         Presentation(
             title: "No speech captured",
-            message: "Nutola didn't detect any speech in this recording. Resume if the meeting is still live, or write notes manually.",
+            message: "Ayrvo didn't detect any speech in this recording. Resume if the meeting is still live, or write notes manually.",
             systemImage: "waveform.slash",
             isEmptyTranscript: true)
     }
@@ -81,7 +81,7 @@ enum MeetingNotice {
     private static var speakerIdentification: Presentation {
         Presentation(
             title: "Speaker names unavailable",
-            message: "The transcript is ready, but Nutola couldn't identify who said what. You can still read and edit the notes.",
+            message: "The transcript is ready, but Ayrvo couldn't identify who said what. You can still read and edit the notes.",
             systemImage: "person.2.slash",
             isEmptyTranscript: false)
     }
@@ -91,19 +91,19 @@ enum MeetingNotice {
         case (true, true):
             return Presentation(
                 title: "Couldn't transcribe this recording",
-                message: "Nutola ran into a problem reading the audio. If the meeting is still going, resume recording to capture the rest.",
+                message: "Ayrvo ran into a problem reading the audio. If the meeting is still going, resume recording to capture the rest.",
                 systemImage: "waveform.badge.exclamationmark",
                 isEmptyTranscript: true)
         case (true, false):
             return Presentation(
                 title: "Your microphone wasn't transcribed",
-                message: "Nutola couldn't read your side of the call. The other side may still appear in the transcript.",
+                message: "Ayrvo couldn't read your side of the call. The other side may still appear in the transcript.",
                 systemImage: "mic.slash",
                 isEmptyTranscript: false)
         case (false, true):
             return Presentation(
                 title: "Call audio wasn't transcribed",
-                message: "Nutola couldn't read the other side of the call. Your microphone may still appear in the transcript.",
+                message: "Ayrvo couldn't read the other side of the call. Your microphone may still appear in the transcript.",
                 systemImage: "speaker.slash",
                 isEmptyTranscript: false)
         case (false, false):

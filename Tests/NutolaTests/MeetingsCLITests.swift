@@ -79,7 +79,7 @@ struct MeetingsCLITests {
         )
 
         #expect(status == 0)
-        #expect(output.joined().contains("Nutola meetings list"))
+        #expect(output.joined().contains("Ayrvo meetings list"))
         #expect(errors == [])
     }
 

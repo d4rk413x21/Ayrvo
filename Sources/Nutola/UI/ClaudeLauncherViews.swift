@@ -578,7 +578,7 @@ struct AILauncherView: View {
                 .foregroundStyle(Theme.tertiary(scheme))
         } else if effectiveMode == .app {
             Text(
-                "Tip: once the nutola connector is set up, open \(preferredAIProvider.displayName) anytime — use $nutola to attach the connector."
+                "Tip: once the ayrvo connector is set up, open \(preferredAIProvider.displayName) anytime — use $ayrvo to attach the connector."
             )
             .font(.nutola(11))
             .foregroundStyle(Theme.tertiary(scheme))

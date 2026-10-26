@@ -11,7 +11,7 @@ final class MCPServerTests {
 
     init() throws {
         tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("nutola-mcp-\(UUID().uuidString)")
+            .appendingPathComponent("ayrvo-mcp-\(UUID().uuidString)")
         archive = MeetingArchive(root: tmp)
         templates = TemplateStore(root: tmp)
         server = MCPServer(archive: archive, templates: templates)
@@ -49,7 +49,7 @@ final class MCPServerTests {
         let result = resp["result"] as! [String: Any]
         #expect(result["protocolVersion"] as? String == "2025-06-18")
         let serverInfo = result["serverInfo"] as! [String: Any]
-        #expect(serverInfo["name"] as? String == "nutola")
+        #expect(serverInfo["name"] as? String == "ayrvo")
         #expect((result["capabilities"] as! [String: Any])["tools"] != nil)
     }
 

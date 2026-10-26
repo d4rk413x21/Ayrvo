@@ -1071,7 +1071,7 @@ struct SideNotesPanel: View {
     HStack(spacing: 8) {
       if isRecording {
         RecordDot()
-          .accessibilityLabel("Nutola is listening")
+          .accessibilityLabel("Ayrvo is listening")
       }
       Text("My notes")
         .font(.nutola(13, .semibold))

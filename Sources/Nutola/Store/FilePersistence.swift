@@ -102,7 +102,7 @@ struct PersistenceWarning: ViewModifier {
                           systemImage: "exclamationmark.triangle.fill")
                     Text(status.failures.isEmpty
                          ? "The operation did not finish. See Details, fix the problem and try the action again."
-                         : "Keep Nutola open. Unsaved file contents are held in memory. Free disk space or fix folder access, then retry.")
+                         : "Keep Ayrvo open. Unsaved file contents are held in memory. Free disk space or fix folder access, then retry.")
                         .font(.caption)
                     HStack {
                         Button("Retry saving") {

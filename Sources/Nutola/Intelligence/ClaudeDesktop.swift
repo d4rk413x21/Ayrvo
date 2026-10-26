@@ -57,7 +57,7 @@ enum ClaudeDesktopPrompt {
         // Claude has the nutola connector's tools available and can decide which to
         // call — naming the meeting + its id is enough to steer it.
         return """
-        Answer a question about my Nutola meeting "\(title)" (id: \(id.uuidString)).
+        Answer a question about my Ayrvo meeting "\(title)" (id: \(id.uuidString)).
 
         \(q.isEmpty ? defaultMeetingQuestion : q)
         """
@@ -66,7 +66,7 @@ enum ClaudeDesktopPrompt {
     static func library(question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         return """
-        Answer using my Nutola meetings:
+        Answer using my Ayrvo meetings:
 
         \(q.isEmpty ? defaultLibraryQuestion : q)
         """
@@ -77,7 +77,7 @@ enum ClaudeDesktopPrompt {
     static func live(question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         let ask = q.isEmpty ? "What's being discussed, and is there anything I should add or ask?" : q
-        return "I'm in a Nutola meeting happening right now — \(ask)"
+        return "I'm in a Ayrvo meeting happening right now — \(ask)"
     }
 }
 
@@ -119,7 +119,7 @@ enum ClaudeCode {
     @discardableResult
     static func setUpGitHubCLI() -> Bool {
         open(prompt: """
-        Set up the GitHub CLI so Nutola can publish my meeting notes as secret gists on my own \
+        Set up the GitHub CLI so Ayrvo can publish my meeting notes as secret gists on my own \
         GitHub account. Check whether the gh command is installed; if not, install it (use \
         Homebrew if it is available, otherwise recommend the best option for my Mac). Then run \
         gh auth login and confirm it worked with gh auth status.
@@ -129,20 +129,20 @@ enum ClaudeCode {
     @discardableResult
     static func addMCPServer(binary: String) -> Bool {
         open(prompt: """
-        Connect Nutola to Claude Code as an MCP server so you can read my meeting library. Run \
+        Connect Ayrvo to Claude Code as an MCP server so you can read my meeting library. Run \
         this command, then confirm it is connected with claude mcp list:
 
-        claude mcp add nutola -s user -- "\(binary)" --mcp
+        claude mcp add ayrvo -s user -- "\(binary)" --mcp
         """)
     }
 
     @discardableResult
     static func addToClaudeDesktop(binary: String, configPath: String) -> Bool {
         open(prompt: """
-        Add Nutola to my Claude Desktop MCP config. Edit the JSON file at \(configPath) and add a \
-        "nutola" entry under "mcpServers" with "command" set to "\(binary)" and "args" set to \
+        Add Ayrvo to my Claude Desktop MCP config. Edit the JSON file at \(configPath) and add a \
+        "ayrvo" entry under "mcpServers" with "command" set to "\(binary)" and "args" set to \
         ["--mcp"]. Merge it with any servers already there instead of overwriting them, and create \
-        the file with just the nutola entry if it does not exist. When you are done, tell me to \
+        the file with just the ayrvo entry if it does not exist. When you are done, tell me to \
         quit and reopen Claude Desktop.
         """)
     }

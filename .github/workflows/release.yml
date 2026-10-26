@@ -41,11 +41,11 @@ jobs:
         run: make app
 
       - name: Zip app bundle
-        run: ditto -c -k --keepParent dist/Nutola.app dist/Nutola.zip
+        run: ditto -c -k --keepParent dist/Ayrvo.app dist/Ayrvo.zip
 
       - name: Attach build to the release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "$RELEASE_TAG" dist/Nutola.zip --clobber
+        run: gh release upload "$RELEASE_TAG" dist/Ayrvo.zip --clobber

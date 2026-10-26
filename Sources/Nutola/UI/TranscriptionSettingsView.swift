@@ -42,7 +42,7 @@ struct TranscriptionSettings: View {
                     .font(.nutola(11))
                     .foregroundStyle(.secondary)
                 if !currentModel.isAvailable {
-                    Text("This engine isn't wired up yet — Nutola transcribes with Apple Speech until it ships. You can't download or select it today.")
+                    Text("This engine isn't wired up yet — Ayrvo transcribes with Apple Speech until it ships. You can't download or select it today.")
                         .font(.nutola(11))
                         .foregroundStyle(.secondary)
                 }

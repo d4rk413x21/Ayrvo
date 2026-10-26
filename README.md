@@ -1,138 +1,209 @@
-# Nutola
+# Ayrvo
 
-Record meetings on macOS, transcribe them on device, and turn spoken development
-requests into reviewed tasks and Linear issues.
+[![CI](https://github.com/d4rk413x21/Ayrvo/actions/workflows/ci.yml/badge.svg)](https://github.com/d4rk413x21/Ayrvo/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Turn meeting conversations into notes and development tasks you can review.**
+
+Ayrvo is a macOS menu bar app that records both sides of a conversation, transcribes
+speech on your Mac, and helps turn explicit requests into context-rich task drafts.
+Review the transcript, source quotations, and owners before publishing selected
+issues to Linear.
+
+## Features
+
+- **Meeting capture:** record your microphone and system audio, with optional
+  meeting detection and calendar matching.
+- **On-device transcription:** use Apple Speech or supported Parakeet models,
+  with speaker attribution and editable transcripts.
+- **Notes and organization:** edit meeting notes, use summary templates, search
+  your library, and organize meetings into folders.
+- **Reviewed development tasks:** extract drafts through a configured AI CLI,
+  retain supporting transcript passages, and review what becomes work.
+- **Linear integration:** publish selected drafts, retain issue links, and recover
+  from interrupted exports without blindly creating duplicates.
+- **Assistant access:** read meetings through the bundled CLI, or connect an MCP
+  client to work with the library.
+
+Ideas, open questions, and tentative suggestions should remain distinguishable
+from explicit requests. Model output still requires human review.
 
 ## Requirements
 
-- macOS 26 or later on Apple Silicon.
-- Microphone and system audio recording permissions. Calendar access is optional.
-- Apple Intelligence for on-device summaries, or a configured AI CLI.
-- Claude Code, Codex, OpenCode or Mistral Vibe for task extraction. Sign in and
-  configure the chosen CLI before selecting it in **Settings → Intelligence**.
+| Component | Requirement |
+| --- | --- |
+| Platform | Apple Silicon Mac running macOS 26 or later |
+| Recording | Microphone and system audio access |
+| AI CLI | Claude Code, Codex, OpenCode, or Mistral Vibe, configured with an account and model |
+| Calendar | Optional; used for event matching and the Coming up view |
+| Accessibility | Optional; used for supported meeting-client speaker attribution |
+| Linear | Optional personal API key for issue export |
 
-Claude and Codex binaries bundled with VS Code and VS Code Insiders are also detected.
-OpenCode and Mistral Vibe use their configured account and model.
+Apple Intelligence is an optional summary provider. It is not required when you
+use a supported AI CLI. Task extraction uses a supported CLI.
 
-## Install
+## Installation
 
-Download `Nutola.zip` from this repository's [releases](https://github.com/d4rk413x21/Nutola/releases),
-extract it, and move `Nutola.app` to Applications.
+When a packaged release is available, download **Ayrvo.zip** from
+[Releases](https://github.com/d4rk413x21/Ayrvo/releases), extract it, and move
+**Ayrvo.app** to Applications.
 
-For a preview build without installing Xcode locally, open **Actions → CI → Run workflow**
-in this repository. Once it finishes, download the **Nutola-preview** artifact and extract
-`Nutola.zip`. Builds are ad-hoc signed; macOS may ask you to allow the app to open.
+To get a preview without installing Xcode:
 
-Open Nutola from Applications and complete the permissions walkthrough.
+1. Open [Actions → CI](https://github.com/d4rk413x21/Ayrvo/actions/workflows/ci.yml).
+2. Select **Run workflow** and choose the branch you want to try.
+3. After the run succeeds, download the **Ayrvo-preview** artifact and extract
+   `Ayrvo.zip`.
+4. Move `Ayrvo.app` to Applications and launch it.
 
-## Google Meet in Chrome
+Preview artifacts require a GitHub account to download. Builds use ad-hoc signing,
+so macOS may ask you to approve opening the app and grant recording permissions.
 
-Record normally, grant Nutola **Accessibility** access, and turn on captions in
-Google Meet. Keep that meeting selected in its Chrome window; Chrome can remain
-behind Nutola. Italian and English Meet layouts are supported. Open Meet's
-**People** panel to read participant names, including the explicit local-user marker.
+### Upgrading from Nutola
 
-Nutola uses changing caption labels to identify remote speakers alongside its
-on-device transcription and diarization. Existing or stale captions, another
-meeting tab and ambiguous simultaneous speakers do not supply a name. Missing
-names fall back to anonymous speakers; caption text does not replace the transcript.
-Meet's microphone mute control does not pause Nutola's microphone recording.
-Other browsers retain microphone/system-audio recording without this name integration.
+Quit Nutola before opening Ayrvo. These builds share the same macOS application
+identity and are intended to replace each other, rather than run side by side.
 
-## Meeting → tasks → Linear
+Ayrvo retains the existing `io.github.d4rk413x21.Nutola` bundle identifier, preference
+domain, Linear Keychain service, and `~/Library/Application Support/Nutola/` storage
+location. The rename does not move recordings, duplicate model downloads, or
+intentionally reset preferences or credentials. macOS may still request permission
+confirmation when replacing an ad-hoc-signed build.
 
-1. Record a meeting from the menu bar, or let meeting detection offer to record it.
-2. Wait for transcription, then review speaker names and transcript text.
-3. Open **Development tasks**, choose a CLI, and select **Extract tasks**.
-4. Review the titles, descriptions, owners and quoted evidence. **Save & Close**
-   keeps the drafts with the meeting; **Copy selected drafts** copies Markdown.
-5. To create issues, connect a personal Linear API key in **Settings → Integrations**.
-   Choose a **Team**, optionally a **Project**, select the drafts and press
+Existing CLI scripts and MCP registrations that point at `Nutola.app` need to be
+updated to the new executable path. Reconfigure the connector in
+**Settings → Intelligence** using the name `ayrvo`.
+
+## Getting started
+
+1. Open Ayrvo and complete the permissions walkthrough.
+2. Configure your chosen AI CLI outside the app, then select it in
+   **Settings → Intelligence**.
+3. Start a recording from the menu bar, or accept the meeting-detection prompt.
+4. When processing finishes, review the transcript and speaker names.
+5. Edit the notes, or open **Development tasks** to extract and review task drafts.
+
+Claude and Codex binaries bundled with VS Code and VS Code Insiders are also
+detected. OpenCode and Mistral Vibe use their existing CLI configuration.
+
+### Speaker names in Google Meet
+
+For supported Google Meet attribution, use Chrome, grant Ayrvo Accessibility access,
+and turn on Meet captions. Keep the meeting selected in its Chrome window; Chrome
+can remain behind Ayrvo. Italian and English Meet layouts are supported. Opening
+the **People** panel also makes participant names available.
+
+Current caption speaker labels supplement on-device transcription and diarization.
+Stale captions, a different meeting tab, or ambiguous simultaneous speakers do not
+provide a reliable name. Caption text does not replace the recorded transcript.
+Other browsers can still be recorded without this name integration.
+
+**Muting your microphone in Meet does not pause Ayrvo's microphone recording.**
+
+## From a meeting to Linear
+
+1. Open **Development tasks**, choose a CLI, and select **Extract tasks**.
+2. Review titles, descriptions, owners, and quoted evidence.
+3. Use **Save & Close** to retain drafts, or **Copy selected drafts** for Markdown.
+4. To publish issues, connect a personal API key in **Settings → Integrations**.
+5. Choose a **Team**, optionally a **Project**, select the drafts, and use
    **Create / retry issues**.
 
-The key needs read access to teams, projects and issues, plus permission to create issues.
-Owner names stay in the descriptions; Nutola does not guess Linear assignees.
-Each successful issue gets a saved link. Retry checks its stable ID first to recover
-from timeouts or partial failures. Existing issues are edited in Linear.
-Pending and created task records are retained, so removal and re-extraction are disabled
-after an export starts. Retry recovers an existing issue's link without applying further
-draft edits. Disconnecting Linear keeps the issues and their saved links.
+The key needs access to teams, projects, and issues, plus permission to create
+issues. Owner names remain in descriptions; Ayrvo does not infer Linear assignees.
+Only selected descriptions and their supporting transcript passages are published.
 
-## Notes and storage
-
-Edit meeting titles, transcripts, speakers and notes in the app. Templates are available
-in **Settings → Templates**. Calendar integration and folders help organize recurring meetings.
-
-Recordings, transcripts, notes and task drafts live in
-`~/Library/Application Support/Nutola/` as audio, JSON and Markdown files.
-
-The app identifier is `io.github.d4rk413x21.Nutola`. On the first launch of this build,
-previous app preferences are imported without overwriting new preferences. The Linear API key
-must be entered again, and macOS may ask for recording or calendar permissions again.
-The meeting archive stays in the same location.
-
-If a file cannot be saved, Nutola keeps its latest contents in memory and shows a
-warning with **Retry saving**. Keep the app open until saving succeeds. Quitting
-without saving discards those pending contents.
-
-## Privacy
-
-- Recording and transcription happen on your Mac; models may be downloaded when needed.
-- Choosing an AI CLI sends meeting text through that CLI's configured account and model.
-- Linear receives only selected draft descriptions and their quoted transcript passages.
-  The API key is stored in the macOS login Keychain. Connecting loads workspace/team
-  metadata, and choosing a team loads its projects.
-- Sharing is optional. Published GitHub gists are unlisted, not private. Local HTML,
-  Markdown and PDF exports are also available.
+Exports persist stable issue IDs and checkpoints. Retry checks for existing issues
+before sending another create request. Once an export starts, task removal and
+re-extraction are disabled to preserve those checkpoints. Edit published issues in
+Linear; retry recovers links and does not apply later draft edits. Disconnecting
+Linear keeps the created issues and their saved links.
 
 ## CLI and MCP
 
-The installed app includes a read-only CLI:
+The installed app includes a read-only meeting CLI:
 
-```bash
-/Applications/Nutola.app/Contents/MacOS/Nutola meetings help
+```sh
+/Applications/Ayrvo.app/Contents/MacOS/Ayrvo meetings help
+/Applications/Ayrvo.app/Contents/MacOS/Ayrvo meetings list --limit 10
 ```
 
-For assistant access to the meeting library, use the connector setup in
-**Settings → Intelligence**. The same binary runs the MCP server with `--mcp`.
-MCP includes editing and deletion tools, so review the permissions granted to your assistant.
+For assistant access, use the connector instructions in **Settings → Intelligence**.
+The same binary starts the MCP server with `--mcp`. Unlike the read-only CLI, MCP
+also exposes editing and deletion tools; grant only the access you intend to use.
 
-## Build from source
+## Data and privacy
 
-Building locally requires Xcode 27.1 (Swift 6.4) and its command-line tools. Alternatively,
-use GitHub Actions as described above. CI pins the stable Xcode 27.1 toolchain on the
-`xcode-27` runner image, which GitHub currently labels as preview. All project targets use
-Swift 6 language mode.
+- Audio capture and transcription run on your Mac. Models may be downloaded when
+  needed.
+- Summaries, chat, and task extraction follow the selected provider. An AI CLI may
+  send meeting text through its configured account and model.
+- Linear receives selected task content. Connecting also loads workspace, team,
+  and project metadata. API keys are stored in the macOS login Keychain.
+- Sharing is optional. GitHub gists are **unlisted, not private**. The inherited
+  rendered-link service uses `notes.nutola.to`; local HTML, Markdown, PDF, and CSV
+  exports are also available.
 
-```bash
-git clone https://github.com/d4rk413x21/Nutola.git
-cd Nutola
-make install  # build, package and install /Applications/Nutola.app
-make test     # run the Swift Testing suite
+Recordings, transcripts, notes, and drafts remain in
+`~/Library/Application Support/Nutola/`. Back up this directory to retain your
+library. This legacy path is preserved for compatibility with existing installs.
+
+If saving fails, keep Ayrvo open and use **Retry saving**. The latest unsaved file
+contents remain in memory; quitting before a successful save can discard them.
+
+## Development
+
+Building the complete app requires **Xcode 27.1 with Swift 6.4**. This build-tool
+requirement is separate from the macOS 26 minimum runtime requirement. GitHub
+Actions provides the configured toolchain when a local Xcode installation is not
+available.
+
+```sh
+git clone https://github.com/d4rk413x21/Ayrvo.git
+cd Ayrvo
+make test    # Build and run the Swift Testing suite
+make app     # Build and verify dist/Ayrvo.app
 ```
 
-Tests use Swift Testing (`@Test`, `#expect`, and `#require`), included in the
-Swift toolchain. Suites with isolated fixtures can run in parallel. Tests that
-change process-wide preferences or retry pending writes live under the serialized
-`SharedStateTests` suite. Tests requiring Apple Intelligence are skipped when it
-is unavailable.
+`make install` additionally installs the app in `/Applications/Ayrvo.app`.
+Tests use Swift Testing from the toolchain; no separate testing dependency is
+needed. Suites that share process-wide state are serialized. Tests requiring
+Apple Intelligence are skipped when that provider is unavailable.
 
-`make app` assembles `dist/Nutola.app`. Publishing a version tag as a GitHub release
-runs **Release app**, which attaches `Nutola.zip` to that release.
+The executable product is `Ayrvo`. Source and test module names retain `Nutola`
+internally to keep the rename focused on application identity and compatibility.
+The `zoom-info` executable remains a separate utility.
+
+Publishing a versioned GitHub release triggers the release workflow, which builds
+and attaches `Ayrvo.zip`. CI also assembles a preview when packaging changes or the
+workflow is started manually.
+
+## Contributing and support
+
+For reproducible bugs and feature proposals, open an
+[issue](https://github.com/d4rk413x21/Ayrvo/issues). Include the app version, macOS
+version, reproduction steps, and expected behavior. Remove personal meeting
+content and credentials from diagnostic material.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development and pull request workflow.
 
 ## Acknowledgements
 
-- This adaptation builds on [Nutola/Nutola](https://github.com/Nutola/Nutola),
-  the Nutola fork previously hosted at `maatheusgois-dd/Nutola`.
-- Based on [conrad-vanl/parfait](https://github.com/conrad-vanl/parfait), which provided
-  the original architecture, audio/transcription pipeline and design.
-- [FluidAudio](https://github.com/FluidInference/FluidAudio) (Apache-2.0) provides speaker
-  diarization. Its model weights (CC-BY-4.0) derive from
+Ayrvo is maintained as an independent continuation of the Nutola codebase. Its Git
+history and original attribution notices are retained.
+
+- [Nutola/Nutola](https://github.com/Nutola/Nutola), previously hosted at
+  `maatheusgois-dd/Nutola`, and the
+  [Nutola adaptation](https://github.com/d4rk413x21/Nutola) from which Ayrvo was created.
+- [conrad-vanl/parfait](https://github.com/conrad-vanl/parfait), which provided the
+  original architecture and audio/transcription workflow.
+- [FluidAudio](https://github.com/FluidInference/FluidAudio) (Apache-2.0) for speaker
+  diarization. Associated model weights derive from
   [pyannote](https://github.com/pyannote/pyannote-audio) and
-  [WeSpeaker](https://github.com/wenet-e2e/wespeaker).
-- [Granola](https://granola.ai) inspired the meeting notes experience.
-- The Soniqo model weights are also used by [anarlog](https://github.com/fastrepl/anarlog).
+  [WeSpeaker](https://github.com/wenet-e2e/wespeaker) (CC-BY-4.0).
+- [Granola](https://granola.ai) for inspiration for the meeting-notes experience.
+- [anarlog](https://github.com/fastrepl/anarlog), which also uses the Soniqo model weights.
 
 ## License
 
-[MIT](LICENSE). Original copyright and attribution notices are retained.
+[MIT](LICENSE). The original copyright and license notices are preserved.

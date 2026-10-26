@@ -66,7 +66,7 @@ enum SharedNotesExporter {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="dark">
-        <meta name="generator" content="nutola/1">
+        <meta name="generator" content="ayrvo/1">
         <title>\(title)</title>
         <style>
         :root{
@@ -82,7 +82,7 @@ enum SharedNotesExporter {
           -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
         }
         main{max-width:720px; margin:0 auto; padding:44px 24px 56px}
-        .nutola-bar{
+        .ayrvo-bar{
           height:6px; border-radius:3px; margin-bottom:30px;
           background:linear-gradient(90deg,#F0A95B 0 25%,#F2B24F 25% 50%,#9FB4FF 50% 75%,#F2EAE0 75% 100%);
           box-shadow:inset 0 0 0 1px var(--border);
@@ -127,7 +127,7 @@ enum SharedNotesExporter {
         </head>
         <body>
         <main>
-        <div class="nutola-bar"></div>
+        <div class="ayrvo-bar"></div>
         <header>
         <h1>\(title)</h1>
         <div class="meta">\(date) · \(duration)</div>
@@ -135,7 +135,7 @@ enum SharedNotesExporter {
         \(summaryBlock)
         \(itemsBlock)
         \(transcriptBlock)
-        <footer>Shared via <a href="\(AppIdentity.repositoryURL.absoluteString)">Nutola</a></footer>
+        <footer>Shared via <a href="\(AppIdentity.repositoryURL.absoluteString)">Ayrvo</a></footer>
         </main>
         </body>
         </html>
@@ -152,7 +152,7 @@ enum SharedNotesExporter {
         let html = exportHTML(meeting: meeting, summary: summary, transcript: transcript, actionItems: actionItems)
         let safeName = meeting.title.replacingOccurrences(of: "/", with: "-")
         let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Nutola — \(safeName) — \(UUID().uuidString).html")
+            .appendingPathComponent("Ayrvo — \(safeName) — \(UUID().uuidString).html")
         guard let data = html.data(using: .utf8) else {
             throw GistError.failed("Could not encode shared notes HTML as UTF-8.")
         }
@@ -173,7 +173,7 @@ enum SharedNotesExporter {
         let (_, rendered) = try await GitHubGist.publish(
             html: html,
             filename: "notes.html",
-            description: "Nutola shared notes — \(meeting.title)")
+            description: "Ayrvo shared notes — \(meeting.title)")
         return rendered
     }
 

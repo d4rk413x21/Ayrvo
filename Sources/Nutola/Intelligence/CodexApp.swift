@@ -37,7 +37,7 @@ enum CodexPrompt {
     static func meeting(id: UUID, title: String, question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         return """
-        Answer a question about my Nutola meeting "\(title)" (id: \(id.uuidString)) using the $nutola connector.
+        Answer a question about my Ayrvo meeting "\(title)" (id: \(id.uuidString)) using the $ayrvo connector.
 
         \(q.isEmpty ? defaultMeetingQuestion : q)
         """
@@ -46,7 +46,7 @@ enum CodexPrompt {
     static func library(question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         return """
-        Answer using my Nutola meetings via the $nutola connector:
+        Answer using my Ayrvo meetings via the $ayrvo connector:
 
         \(q.isEmpty ? defaultLibraryQuestion : q)
         """
@@ -55,7 +55,7 @@ enum CodexPrompt {
     static func live(question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         let ask = q.isEmpty ? "What's being discussed, and is there anything I should add or ask?" : q
-        return "I'm in a Nutola meeting happening right now — use $nutola for the live transcript. \(ask)"
+        return "I'm in a Ayrvo meeting happening right now — use $ayrvo for the live transcript. \(ask)"
     }
 }
 
@@ -65,11 +65,11 @@ enum CodexSetup {
     @discardableResult
     static func addMCPServer(binary: String) -> Bool {
         CodexApp.openNewThread(prompt: """
-        Connect Nutola to Codex as an MCP server so you can read my meeting library. Run:
+        Connect Ayrvo to Codex as an MCP server so you can read my meeting library. Run:
 
-        codex mcp add nutola -- "\(binary)" --mcp
+        codex mcp add ayrvo -- "\(binary)" --mcp
 
-        Then confirm with `codex mcp list`. Remind me to use $nutola (not @) to access meetings.
+        Then confirm with `codex mcp list`. Remind me to use $ayrvo (not @) to access meetings.
         """)
     }
 }

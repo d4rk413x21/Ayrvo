@@ -43,7 +43,7 @@ enum HTMLExporter {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="light dark">
-        <meta name="generator" content="nutola/1">
+        <meta name="generator" content="ayrvo/1">
         <title>\(title)</title>
         <style>
         :root{
@@ -65,7 +65,7 @@ enum HTMLExporter {
           -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
         }
         main{max-width:720px; margin:0 auto; padding:44px 24px 56px}
-        .nutola-bar{
+        .ayrvo-bar{
           height:6px; border-radius:3px; margin-bottom:30px;
           background:linear-gradient(90deg,#F9F7F4 0 25%,#F2A93B 25% 50%,#1A8917 50% 75%,#242429 75% 100%);
           box-shadow:inset 0 0 0 1px var(--border);
@@ -117,7 +117,7 @@ enum HTMLExporter {
         </head>
         <body>
         <main>
-        <div class="nutola-bar"></div>
+        <div class="ayrvo-bar"></div>
         <header>
         <h1>\(title)</h1>
         <div class="meta">\(date) · \(duration)</div>
@@ -125,7 +125,7 @@ enum HTMLExporter {
         </header>
         \(summaryBlock)
         \(transcriptBlock)
-        <footer>Recorded with <a href="\(AppIdentity.repositoryURL.absoluteString)">Nutola</a></footer>
+        <footer>Recorded with <a href="\(AppIdentity.repositoryURL.absoluteString)">Ayrvo</a></footer>
         </main>
         </body>
         </html>

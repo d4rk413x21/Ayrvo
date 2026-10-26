@@ -71,15 +71,15 @@ private struct GeneralSettings: View {
     var body: some View {
         Form {
             Section("Setup") {
-                Toggle("Launch Nutola at login", isOn: $launchAtLogin)
+                Toggle("Launch Ayrvo at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { applyLaunchAtLogin() }
                 Text(LaunchAtLogin.requiresApproval
-                     ? "Approve Nutola under System Settings → General → Login Items to finish enabling this."
-                     : "Starts Nutola in the menu bar automatically when you log in.")
+                     ? "Approve Ayrvo under System Settings → General → Login Items to finish enabling this."
+                     : "Starts Ayrvo in the menu bar automatically when you log in.")
                     .font(.nutola(11))
                     .foregroundStyle(.secondary)
-                Toggle("Open Nutola window at launch", isOn: $openMainWindowAtLaunch)
-                Text("Shows the main window when Nutola starts. Turn off to stay in the menu bar until you open it.")
+                Toggle("Open Ayrvo window at launch", isOn: $openMainWindowAtLaunch)
+                Text("Shows the main window when Ayrvo starts. Turn off to stay in the menu bar until you open it.")
                     .font(.nutola(11))
                     .foregroundStyle(.secondary)
                 Button("Run setup walkthrough again") { openWindow(id: "onboarding") }
@@ -95,7 +95,7 @@ private struct GeneralSettings: View {
                     }
                 Toggle("Start recording without asking", isOn: $autoRecord)
                     .disabled(!detectMeetings)
-                Text("Nutola notices when another app starts using your microphone — Zoom, Meet, Teams, anything — and offers to record. Nothing is captured until recording starts.")
+                Text("Ayrvo notices when another app starts using your microphone — Zoom, Meet, Teams, anything — and offers to record. Nothing is captured until recording starts.")
                     .font(.nutola(11))
                     .foregroundStyle(.secondary)
                 Toggle("Stop recording automatically when the meeting ends", isOn: $autoStopRecording)
@@ -182,7 +182,7 @@ private struct GeneralSettings: View {
                                ? true : (app.notificationAuthStatus == .denied ? false : nil))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Notifications").font(.nutola(12, .medium))
-                        Text("Lets Nutola notify you when a recording finishes processing and your notes are ready.")
+                        Text("Lets Ayrvo notify you when a recording finishes processing and your notes are ready.")
                             .font(.nutola(11))
                             .foregroundStyle(.secondary)
                     }
@@ -216,14 +216,14 @@ private struct GeneralSettings: View {
 
             Section {
                 Toggle("Save a crash diagnostic on crash", isOn: $crashDiagnostics)
-                Text("When Nutola crashes, writes a small scrubbed record (version, OS, signal, and the in-flight meeting's title and state — never audio, transcript, or notes) to ~/Library/Application Support/Nutola/diagnostics.json so you can attach it to a bug report. Off by default.")
+                Text("When Ayrvo crashes, writes a small scrubbed record (version, OS, signal, and the in-flight meeting's title and state — never audio, transcript, or notes) to ~/Library/Application Support/Nutola/diagnostics.json so you can attach it to a bug report. Off by default.")
                     .font(.nutola(11))
                     .foregroundStyle(.secondary)
             }
 
             Section("About") {
                 HStack {
-                    Text("Nutola")
+                    Text("Ayrvo")
                         .font(.nutola(14, .semibold))
                     Spacer()
                     if let v = AppVersion.displayVersion {
@@ -272,7 +272,7 @@ private struct GeneralSettings: View {
     private var accessibilitySettingsDetail: String {
         accessibilityTrusted
             ? "Allowed — reads Zoom speakers and Google Meet captions in Chrome to label who said what in the transcript."
-            : "Optional — labels Zoom speakers and Google Meet captions in Chrome. Click Grant, then enable Nutola under Accessibility."
+            : "Optional — labels Zoom speakers and Google Meet captions in Chrome. Click Grant, then enable Ayrvo under Accessibility."
     }
 
     private var systemAudioOK: Bool? { nil }
@@ -640,7 +640,7 @@ private struct IntelligenceSettings: View {
                         Text(provider.displayName).tag(provider)
                     }
                 }
-                Text("Choose which assistant Nutola uses for meeting chat and summaries.")
+                Text("Choose which assistant Ayrvo uses for meeting chat and summaries.")
                     .font(.nutola(11))
                     .foregroundStyle(.secondary)
 
@@ -796,7 +796,7 @@ private struct IntelligenceSettings: View {
                     : "Claude Code — not logged in"
             }
             return forDetail
-                ? "Ask about your meetings from Claude once the nutola connector is set up."
+                ? "Ask about your meetings from Claude once the ayrvo connector is set up."
                 : "Claude Code — connected"
         case .codex:
             if !installed {
@@ -810,30 +810,30 @@ private struct IntelligenceSettings: View {
                     : "Codex CLI — not logged in"
             }
             return forDetail
-                ? "Ask about your meetings from Codex once the nutola connector is set up."
+                ? "Ask about your meetings from Codex once the ayrvo connector is set up."
                 : "Codex CLI — connected"
         case .opencode, .vibe:
             if forDetail {
                 let command = provider == .opencode ? "opencode" : "vibe"
-                return "Run `\(command)` in Terminal to configure its account and model. Nutola uses that configuration; account errors are reported when a request runs."
+                return "Run `\(command)` in Terminal to configure its account and model. Ayrvo uses that configuration; account errors are reported when a request runs."
             }
             return "\(provider.displayName) CLI — \(installed ? "installed" : "not installed")"
         }
     }
 
     private var binaryPath: String {
-        Bundle.main.executablePath ?? "/Applications/Nutola.app/Contents/MacOS/Nutola"
+        Bundle.main.executablePath ?? "/Applications/Ayrvo.app/Contents/MacOS/Ayrvo"
     }
 
     private var mcpCommand: String {
-        "claude mcp add nutola -s user -- \"\(binaryPath)\" --mcp"
+        "claude mcp add ayrvo -s user -- \"\(binaryPath)\" --mcp"
     }
 
     private var mcpDesktopConfigSnippet: String {
         """
         {
           "mcpServers": {
-            "nutola": {
+            "ayrvo": {
               "command": "\(binaryPath)",
               "args": ["--mcp"]
             }
@@ -853,7 +853,7 @@ private struct IntelligenceSettings: View {
     }
 
     private var codexMCPCommand: String {
-        "codex mcp add nutola -- \"\(binaryPath)\" --mcp"
+        "codex mcp add ayrvo -- \"\(binaryPath)\" --mcp"
     }
 
     @ViewBuilder
@@ -863,7 +863,7 @@ private struct IntelligenceSettings: View {
             EmptyView()
         case .claude:
             VStack(alignment: .leading, spacing: 8) {
-                Text("Give Claude access to your meeting library. Everything stays local — the connector just reads Nutola's on-disk library.")
+                Text("Give Claude access to your meeting library. Everything stays local — the connector just reads Ayrvo's on-disk library.")
                     .font(.nutola(12))
 
                 HStack {
@@ -903,7 +903,7 @@ private struct IntelligenceSettings: View {
                             .help("Copy the claude mcp add command")
                             .accessibilityLabel("Copy the claude mcp add command")
                         }
-                        Text("Or add the \"nutola\" entry to Claude Desktop's config (merge into any existing \"mcpServers\"):")
+                        Text("Or add the \"ayrvo\" entry to Claude Desktop's config (merge into any existing \"mcpServers\"):")
                             .font(.nutola(11))
                             .foregroundStyle(.secondary)
                         HStack {
@@ -923,7 +923,7 @@ private struct IntelligenceSettings: View {
             }
         case .codex:
             VStack(alignment: .leading, spacing: 8) {
-                Text("Give Codex access to your meeting library. Everything stays local — the connector just reads Nutola's on-disk library. Use $nutola (not @) to attach it.")
+                Text("Give Codex access to your meeting library. Everything stays local — the connector just reads Ayrvo's on-disk library. Use $ayrvo (not @) to attach it.")
                     .font(.nutola(12))
 
                 HStack {
@@ -1122,7 +1122,7 @@ private struct TemplateSettings: View {
                 } else {
                     EmptyStateView(
                         title: "Templates",
-                        message: "Pick a template to edit, or add one. Templates shape every summary Nutola writes.")
+                        message: "Pick a template to edit, or add one. Templates shape every summary Ayrvo writes.")
                 }
             }
             .padding(12)
@@ -1371,7 +1371,7 @@ private struct DebugSettings: View {
         let text = NutolaFileLog.exportAll()
         guard !text.isEmpty else { return }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "nutola-logs-\(Int(Date().timeIntervalSince1970)).txt"
+        panel.nameFieldStringValue = "ayrvo-logs-\(Int(Date().timeIntervalSince1970)).txt"
         panel.allowedContentTypes = [.plainText]
         if panel.runModal() == .OK, let url = panel.url {
             try? FilePersistence.write(Data(text.utf8), to: url)

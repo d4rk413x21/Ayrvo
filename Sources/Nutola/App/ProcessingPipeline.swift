@@ -269,7 +269,7 @@ enum ProcessingPipeline {
         do { try archive.saveTranscript(mergedSegments, for: id) }
         catch {
             outcome.state = .failed
-            outcome.notice = "The transcript could not be saved. Keep Nutola open and retry saving."
+            outcome.notice = "The transcript could not be saved. Keep Ayrvo open and retry saving."
             onSummary(.done)
             return outcome
         }
@@ -341,7 +341,7 @@ enum ProcessingPipeline {
                     // A user edit won the race; keep it.
                 } catch {
                     outcome.state = .failed
-                    notices.append("The summary could not be saved. Keep Nutola open and retry saving.")
+                    notices.append("The summary could not be saved. Keep Ayrvo open and retry saving.")
                 }
             }
         case .failure(let why):
@@ -484,7 +484,7 @@ enum ProcessingPipeline {
             \(trimmedNotes)
             """
         }
-        let systemPrompt = "You are Nutola, a meeting notetaker. Output only clean Markdown notes — no preamble, no code fences."
+        let systemPrompt = "You are Ayrvo, a meeting notetaker. Output only clean Markdown notes — no preamble, no code fences."
 
         // Each engine returns a summary, or nil if it's unavailable or errors (so we
         // fall through to the other). Claude records its error so a Claude-only

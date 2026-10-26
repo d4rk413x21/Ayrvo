@@ -82,7 +82,7 @@ struct MainWindowView: View {
             foldersSection
         }
         .listStyle(.sidebar)
-        .navigationTitle("Nutola")
+        .navigationTitle("Ayrvo")
         .safeAreaInset(edge: .bottom) {
             if let session = app.session {
                 SidebarRecordingStrip(session: session)

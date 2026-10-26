@@ -61,12 +61,12 @@ struct MenuBarView: View {
             Divider()
             if showQuitConfirm {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Quit Nutola?")
+                    Text("Quit Ayrvo?")
                         .font(.nutola(12, .semibold))
                         .foregroundStyle(Theme.heading(scheme))
                     Text(app.isRecording
                          ? "A recording is in progress."
-                         : "Nutola will stop running in the background.")
+                         : "Ayrvo will stop running in the background.")
                         .font(.nutola(10))
                         .foregroundStyle(Theme.secondary(scheme))
                     HStack {
@@ -84,7 +84,7 @@ struct MenuBarView: View {
                 .padding(.bottom, 4)
             } else {
                 HStack {
-                    Button("Open Nutola") { openMain() }
+                    Button("Open Ayrvo") { openMain() }
                         .buttonStyle(.plain)
                         .font(.nutola(12, .medium))
                         .foregroundStyle(Theme.blueberry)
@@ -103,8 +103,8 @@ struct MenuBarView: View {
                     }
                     .buttonStyle(.plain)
                     .onHover { powerHovering = $0 }
-                    .help("Quit Nutola")
-                    .accessibilityLabel("Quit Nutola")
+                    .help("Quit Ayrvo")
+                    .accessibilityLabel("Quit Ayrvo")
                 }
         }
         }
@@ -222,9 +222,9 @@ struct MenuBarView: View {
     private var header: some View {
         HStack(spacing: 8) {
             NutolaStripes().scaleEffect(0.45).frame(width: 20, height: 26)
-                .accessibilityLabel("Nutola")
+                .accessibilityLabel("Ayrvo")
                 .accessibilityValue(menuBarStateValue)
-            Text("Nutola")
+            Text("Ayrvo")
                 .font(.nutola(16, .bold))
                 .foregroundStyle(Theme.heading(scheme))
             Spacer()
@@ -246,7 +246,7 @@ struct MenuBarView: View {
             .onHover { gearHovering = $0 }
             .help("Open Settings")
             .accessibilityLabel("Settings")
-            .accessibilityHint("Open Nutola settings")
+            .accessibilityHint("Open Ayrvo settings")
         }
     }
 
