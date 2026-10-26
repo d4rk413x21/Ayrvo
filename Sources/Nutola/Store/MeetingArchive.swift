@@ -70,6 +70,9 @@ final class MeetingArchive: @unchecked Sendable {
     /// Runs on `queue`. Returns `nil` when there's no transcript file.
     private func cachedTranscript(for id: UUID) -> [TranscriptSegment]? {
         let url = folder(for: id).appendingPathComponent("transcript.json")
+        if let pending = FilePersistence.failure(at: url) {
+            return try? decoder.decode([TranscriptSegment].self, from: pending.data)
+        }
         guard let mtime = try? FileManager.default
             .attributesOfItem(atPath: url.path)[.modificationDate] as? Date
         else {
@@ -138,7 +141,7 @@ final class MeetingArchive: @unchecked Sendable {
         let dirs = (try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: nil)) ?? []
         return dirs.compactMap { dir in
-            guard let data = try? Data(contentsOf: dir.appendingPathComponent("meeting.json"))
+            guard let data = try? FilePersistence.read(dir.appendingPathComponent("meeting.json"))
             else { return nil }
             return try? decoder.decode(Meeting.self, from: data)
         }
@@ -147,7 +150,7 @@ final class MeetingArchive: @unchecked Sendable {
 
     func meeting(id: UUID) -> Meeting? {
         queue.sync {
-            guard let data = try? Data(contentsOf: folder(for: id).appendingPathComponent("meeting.json"))
+            guard let data = try? FilePersistence.read(folder(for: id).appendingPathComponent("meeting.json"))
             else { return nil }
             return try? decoder.decode(Meeting.self, from: data)
         }
@@ -156,6 +159,7 @@ final class MeetingArchive: @unchecked Sendable {
     enum ArchiveError: Error {
         case meetingDeleted
         case encodingFailed
+        case summaryChanged
     }
 
     /// The meeting folder is created once, at recording start. Refusing to
@@ -168,7 +172,7 @@ final class MeetingArchive: @unchecked Sendable {
                 throw ArchiveError.meetingDeleted
             }
             let data = try encoder.encode(meeting)
-            try data.write(to: dir.appendingPathComponent("meeting.json"), options: .atomic)
+            try FilePersistence.write(data, to: dir.appendingPathComponent("meeting.json"))
         }
     }
 
@@ -180,7 +184,11 @@ final class MeetingArchive: @unchecked Sendable {
         try queue.sync {
             // Idempotent: a double-delete (e.g. user trashed the folder from
             // Finder between the pipeline and a late save) must not throw.
-            try? FileManager.default.removeItem(at: folder(for: id))
+            let directory = folder(for: id)
+            if FileManager.default.fileExists(atPath: directory.path) {
+                try FileManager.default.removeItem(at: directory)
+            }
+            FilePersistence.discard(in: directory)
             invalidateTranscriptCache(for: id)
         }
     }
@@ -193,8 +201,9 @@ final class MeetingArchive: @unchecked Sendable {
 
     func saveTranscript(_ segments: [TranscriptSegment], for id: UUID) throws {
         try queue.sync {
+            guard FileManager.default.fileExists(atPath: folder(for: id).path) else { throw ArchiveError.meetingDeleted }
             let data = try encoder.encode(segments)
-            try data.write(to: folder(for: id).appendingPathComponent("transcript.json"), options: .atomic)
+            try FilePersistence.write(data, to: folder(for: id).appendingPathComponent("transcript.json"))
             invalidateTranscriptCache(for: id)
         }
     }
@@ -237,14 +246,16 @@ final class MeetingArchive: @unchecked Sendable {
     /// meeting folder is gone (discarded mid-recording).
     func saveLiveTranscript(_ segments: [TranscriptSegment], for id: UUID) {
         queue.sync {
-            guard let data = try? encoder.encode(segments) else { return }
-            try? data.write(to: liveTranscriptURL(for: id), options: .atomic)
+            guard FileManager.default.fileExists(atPath: folder(for: id).path) else { return }
+            do {
+                try FilePersistence.write(encoder.encode(segments), to: liveTranscriptURL(for: id))
+            } catch { PersistenceStatus.record(error) }
         }
     }
 
     func liveTranscript(for id: UUID) -> [TranscriptSegment] {
         queue.sync {
-            guard let data = try? Data(contentsOf: liveTranscriptURL(for: id)) else { return [] }
+            guard let data = try? FilePersistence.read(liveTranscriptURL(for: id)) else { return [] }
             return (try? decoder.decode([TranscriptSegment].self, from: data)) ?? []
         }
     }
@@ -258,7 +269,7 @@ final class MeetingArchive: @unchecked Sendable {
     }
 
     func removeLiveTranscript(for id: UUID) {
-        queue.sync { try? FileManager.default.removeItem(at: liveTranscriptURL(for: id)) }
+        queue.sync { removeArtifact(liveTranscriptURL(for: id)) }
     }
 
     // MARK: - Platform speaker events (Zoom active-speaker timeline)
@@ -269,20 +280,22 @@ final class MeetingArchive: @unchecked Sendable {
 
     func platformSpeakerEvents(for id: UUID) -> [PlatformSpeakerEvent] {
         queue.sync {
-            guard let data = try? Data(contentsOf: platformSpeakerEventsURL(for: id)) else { return [] }
+            guard let data = try? FilePersistence.read(platformSpeakerEventsURL(for: id)) else { return [] }
             return (try? decoder.decode([PlatformSpeakerEvent].self, from: data)) ?? []
         }
     }
 
     func savePlatformSpeakerEvents(_ events: [PlatformSpeakerEvent], for id: UUID) {
         queue.sync {
-            guard let data = try? encoder.encode(events) else { return }
-            try? data.write(to: platformSpeakerEventsURL(for: id), options: .atomic)
+            guard FileManager.default.fileExists(atPath: folder(for: id).path) else { return }
+            do {
+                try FilePersistence.write(encoder.encode(events), to: platformSpeakerEventsURL(for: id))
+            } catch { PersistenceStatus.record(error) }
         }
     }
 
     func removePlatformSpeakerEvents(for id: UUID) {
-        queue.sync { try? FileManager.default.removeItem(at: platformSpeakerEventsURL(for: id)) }
+        queue.sync { removeArtifact(platformSpeakerEventsURL(for: id)) }
     }
 
     // MARK: - Zoom roster snapshot (participants panel / video tiles)
@@ -293,7 +306,7 @@ final class MeetingArchive: @unchecked Sendable {
 
     func zoomRoster(for id: UUID) -> [String] {
         queue.sync {
-            guard let data = try? Data(contentsOf: zoomRosterURL(for: id)) else { return [] }
+            guard let data = try? FilePersistence.read(zoomRosterURL(for: id)) else { return [] }
             return (try? decoder.decode([String].self, from: data)) ?? []
         }
     }
@@ -302,7 +315,7 @@ final class MeetingArchive: @unchecked Sendable {
         queue.sync {
             do {
                 let data = try encoder.encode(names)
-                try data.write(to: zoomRosterURL(for: id), options: .atomic)
+                try FilePersistence.write(data, to: zoomRosterURL(for: id))
             } catch {
                 NutolaConsoleLog.app("saveZoomRoster: could not persist roster — \(error.localizedDescription)")
             }
@@ -310,20 +323,35 @@ final class MeetingArchive: @unchecked Sendable {
     }
 
     func removeZoomRoster(for id: UUID) {
-        queue.sync { try? FileManager.default.removeItem(at: zoomRosterURL(for: id)) }
+        queue.sync { removeArtifact(zoomRosterURL(for: id)) }
+    }
+
+    private func removeArtifact(_ url: URL) {
+        do {
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+            FilePersistence.discard(url)
+        } catch { PersistenceStatus.record(error) }
     }
 
     // MARK: - Summary
 
     func summary(for id: UUID) -> String {
         queue.sync {
-            (try? String(contentsOf: folder(for: id).appendingPathComponent("summary.md"), encoding: .utf8)) ?? ""
+            let file = folder(for: id).appendingPathComponent("summary.md")
+            return (try? FilePersistence.read(file)).map { String(decoding: $0, as: UTF8.self) } ?? ""
         }
     }
 
-    func saveSummary(_ markdown: String, for id: UUID) throws {
+    func saveSummary(_ markdown: String, for id: UUID, replacing expected: String? = nil) throws {
         try queue.sync {
+            guard FileManager.default.fileExists(atPath: folder(for: id).path) else { throw ArchiveError.meetingDeleted }
             let summaryURL = folder(for: id).appendingPathComponent("summary.md")
+            if let expected {
+                let current = (try? FilePersistence.read(summaryURL)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+                guard current == expected else { throw ArchiveError.summaryChanged }
+            }
             // Snapshot the outgoing summary so edits are recoverable. Only when a
             // non-empty summary already exists — the first write (empty → content)
             // isn't an edit, and snapshotting it would store an empty file forever.
@@ -332,7 +360,7 @@ final class MeetingArchive: @unchecked Sendable {
                 snapshotSummary(existing, for: id)
             }
             guard let data = markdown.data(using: .utf8) else { throw ArchiveError.encodingFailed }
-            try data.write(to: summaryURL, options: .atomic)
+            try FilePersistence.write(data, to: summaryURL)
         }
     }
 
@@ -356,11 +384,14 @@ final class MeetingArchive: @unchecked Sendable {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         } catch {
             NutolaConsoleLog.app("snapshotSummary: could not create Edits dir — \(error.localizedDescription)")
-            return
         }
         // Restore identifies snapshots by timestamp, so every write must advance
         // even within one millisecond, after reopening, or if the clock moves back.
-        let latestEpochMS = (try? FileManager.default.contentsOfDirectory(atPath: dir.path))?
+        let pendingSnapshots = FilePersistence.failures.filter { $0.key.deletingLastPathComponent() == dir }
+        if pendingSnapshots.values.contains(where: { $0.data == Data(markdown.utf8) }) { return }
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+            + pendingSnapshots.keys.map(\.lastPathComponent)
+        let latestEpochMS = names
             .filter { $0.hasPrefix("summary-") && $0.hasSuffix(".md") }
             .compactMap { Int64($0.dropFirst("summary-".count).split(separator: "-").first ?? "") }
             .max() ?? 0
@@ -373,7 +404,7 @@ final class MeetingArchive: @unchecked Sendable {
             return
         }
         do {
-            try data.write(to: dest, options: .atomic)
+            try FilePersistence.write(data, to: dest)
         } catch {
             NutolaConsoleLog.app("snapshotSummary: could not write snapshot — \(error.localizedDescription)")
             return
@@ -453,8 +484,7 @@ final class MeetingArchive: @unchecked Sendable {
                 snapshotSummary(current, for: id)
             }
             do {
-                try target.markdown.data(using: .utf8)!
-                    .write(to: summaryURL, options: .atomic)
+                try FilePersistence.write(Data(target.markdown.utf8), to: summaryURL)
                 return true
             } catch {
                 return false
@@ -466,14 +496,15 @@ final class MeetingArchive: @unchecked Sendable {
 
     func sideNotes(for id: UUID) -> String {
         queue.sync {
-            (try? String(contentsOf: folder(for: id).appendingPathComponent("notes.md"), encoding: .utf8)) ?? ""
+            (try? FilePersistence.read(folder(for: id).appendingPathComponent("notes.md")))
+                .map { String(decoding: $0, as: UTF8.self) } ?? ""
         }
     }
 
     func saveSideNotes(_ text: String, for id: UUID) throws {
         try queue.sync {
-            try text.data(using: .utf8)!
-                .write(to: folder(for: id).appendingPathComponent("notes.md"), options: .atomic)
+            guard FileManager.default.fileExists(atPath: folder(for: id).path) else { throw ArchiveError.meetingDeleted }
+            try FilePersistence.write(Data(text.utf8), to: folder(for: id).appendingPathComponent("notes.md"))
         }
     }
 

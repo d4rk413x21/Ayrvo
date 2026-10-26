@@ -103,7 +103,19 @@ struct MeetingDetailView: View {
             loadSideNotes()
             presentTranscriptIfNeeded()
         }
-        .onDisappear { showAttendees = false }
+        .onDisappear {
+            showAttendees = false
+            sideNotesSaveTask?.cancel()
+            if sideNotesSaveTask != nil, app.store.meeting(id: meeting.id) != nil {
+                app.store.saveSideNotes(sideNotes, for: meeting.id)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nutolaFlushEdits)) { _ in
+            sideNotesSaveTask?.cancel()
+            if sideNotesSaveTask != nil, app.store.meeting(id: meeting.id) != nil {
+                app.store.saveSideNotes(sideNotes, for: meeting.id)
+            }
+        }
         .onChange(of: app.store.meetings) {
             if let fresh = app.store.meetings.first(where: { $0.id == meeting.id }) {
                 meeting = fresh
@@ -197,6 +209,7 @@ struct MeetingDetailView: View {
             }
             .buttonStyle(.plain)
             .help("Copy transcript")
+            .accessibilityLabel("Copy transcript")
             .disabled(app.store.transcript(for: meeting.id).isEmpty)
             Button {
                 showShareNotes = true
@@ -207,6 +220,7 @@ struct MeetingDetailView: View {
             }
             .buttonStyle(.plain)
             .help("Share notes")
+            .accessibilityLabel("Share notes")
             publishMenu
         }
         .padding(.horizontal, 20)
@@ -302,6 +316,7 @@ struct MeetingDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Show all participants")
+                .accessibilityLabel("Show all participants")
                 .popover(isPresented: $showAttendees, arrowEdge: .top) {
                     attendeesPopover
                 }
@@ -544,12 +559,17 @@ struct MeetingDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 40)
             } else {
-                Text("Enhanced notes will appear here. Open My notes on the left, or use the Transcript panel below for the live transcript.")
+                Button {
+                    showSideNotes = true
+                } label: {
+                    Text("Enhanced notes will appear here. Open My notes on the left, or use the Transcript panel below for the live transcript.")
                     .font(.nutola(14))
                     .foregroundStyle(Theme.tertiary(scheme))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, 40)
-                    .onTapGesture { showSideNotes = true }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open My notes")
             }
         }
     }
@@ -602,13 +622,21 @@ struct MeetingDetailView: View {
             // localization lands, wrap them in LocalizedStringKey.
             HStack {
                 Spacer()
-                Button("Cancel") { notesDraft = nil }
+                Button("Cancel") {
+                    let file = app.store.archive.folder(for: meeting.id).appendingPathComponent("summary.md")
+                    if let notesDraft, FilePersistence.failure(at: file)?.data == Data(notesDraft.utf8) {
+                        FilePersistence.discard(file)
+                    }
+                    notesDraft = nil
+                }
+                    .keyboardShortcut(.cancelAction)
                 Button("Save") {
-                    if let notesDraft { app.store.saveSummary(notesDraft, for: meeting.id) }
+                    if let notesDraft, !app.store.saveSummarySafely(notesDraft, for: meeting.id) { return }
                     notesDraft = nil
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(actionColor)
+                .keyboardShortcut("s", modifiers: .command)
             }
             .controlSize(.small)
 
@@ -1141,7 +1169,7 @@ struct MeetingDetailView: View {
         guard panel.runModal() == .OK, let dest = panel.url else { return }
         let html = SharedNotesExporter.exportHTML(
             meeting: m, summary: summary, transcript: turns, actionItems: items)
-        try? html.data(using: .utf8)?.write(to: dest)
+        try? FilePersistence.write(Data(html.utf8), to: dest)
     }
 
     private func previewInBrowser() {
@@ -1153,7 +1181,7 @@ struct MeetingDetailView: View {
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("Nutola — \(safeName).html")
         do {
-            try html.data(using: .utf8)?.write(to: file)
+            try FilePersistence.write(Data(html.utf8), to: file)
             NSWorkspace.shared.open(file)
         } catch {
             publishState = .failed(error.localizedDescription)
@@ -1166,7 +1194,7 @@ struct MeetingDetailView: View {
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let dest = panel.url else { return }
         let csv = CSVExporter.export(meetings: app.store.meetings)
-        try? csv.data(using: .utf8)?.write(to: dest)
+        try? FilePersistence.write(Data(csv.utf8), to: dest)
     }
 
     private func exportHTML() {
@@ -1178,7 +1206,7 @@ struct MeetingDetailView: View {
             meeting: meeting,
             summaryMarkdown: app.store.summary(for: meeting.id),
             segments: app.store.transcript(for: meeting.id))
-        try? html.data(using: .utf8)?.write(to: dest)
+        try? FilePersistence.write(Data(html.utf8), to: dest)
     }
 
     private func exportMarkdown() {
@@ -1189,7 +1217,7 @@ struct MeetingDetailView: View {
         let md = TranscriptFormatter.markdown(
             app.store.transcript(for: meeting.id),
             speakers: meeting.speakers)
-        try? md.data(using: .utf8)?.write(to: dest)
+        try? FilePersistence.write(Data(md.utf8), to: dest)
     }
 
     private func exportSRT() {
@@ -1200,7 +1228,7 @@ struct MeetingDetailView: View {
         let srt = TranscriptFormatter.srt(
             app.store.transcript(for: meeting.id),
             speakers: meeting.speakers)
-        try? srt.data(using: .utf8)?.write(to: dest)
+        try? FilePersistence.write(Data(srt.utf8), to: dest)
     }
 
     private func exportVTT() {
@@ -1211,7 +1239,7 @@ struct MeetingDetailView: View {
         let vtt = TranscriptFormatter.vtt(
             app.store.transcript(for: meeting.id),
             speakers: meeting.speakers)
-        try? vtt.data(using: .utf8)?.write(to: dest)
+        try? FilePersistence.write(Data(vtt.utf8), to: dest)
     }
 
     private func exportPDF() {
@@ -1219,11 +1247,13 @@ struct MeetingDetailView: View {
         panel.nameFieldStringValue = safeFilename + ".pdf"
         panel.allowedContentTypes = [.pdf]
         guard panel.runModal() == .OK, let dest = panel.url else { return }
-        try? PDFExporter.exportPDF(
-            meeting: meeting,
-            summaryMarkdown: app.store.summary(for: meeting.id),
-            segments: app.store.transcript(for: meeting.id),
-            to: dest)
+        do {
+            try PDFExporter.exportPDF(
+                meeting: meeting,
+                summaryMarkdown: app.store.summary(for: meeting.id),
+                segments: app.store.transcript(for: meeting.id),
+                to: dest)
+        } catch { PersistenceStatus.shared.report(error) }
     }
 
     private var safeFilename: String {

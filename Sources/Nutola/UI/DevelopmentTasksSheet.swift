@@ -17,6 +17,7 @@ struct DevelopmentTasksSheet: View {
     @State private var error: String?
     @State private var loadFailed = false
     @State private var confirmReplace = false
+    @State private var confirmDiscard = false
 
     @State private var isPublishing = false
     @State private var publication: Task<Void, Never>?
@@ -53,6 +54,10 @@ struct DevelopmentTasksSheet: View {
                 }
                 .disabled(busy || loadFailed)
                 .keyboardShortcut(.defaultAction)
+                if hasChanges && !busy {
+                    Button("Discard changes") { confirmDiscard = true }
+                        .keyboardShortcut(.cancelAction)
+                }
                 if loadFailed {
                     Button("Close") { dismiss() }
                 }
@@ -127,6 +132,12 @@ struct DevelopmentTasksSheet: View {
         .padding(24)
         .frame(width: 760, height: 680)
         .interactiveDismissDisabled(busy || hasChanges)
+        .confirmationDialog("Discard unsaved task edits?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button("Discard and Close", role: .destructive) { dismiss() }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("Saved drafts and Linear issues will stay unchanged. Copy the selected drafts first if you want to keep the unsaved text elsewhere.")
+        }
         .task { load(); await loadLinear() }
         .task(id: teamID) { await loadProjects() }
         .onReceive(NotificationCenter.default.publisher(for: LinearCredentials.changed)) { _ in
@@ -384,11 +395,11 @@ struct DevelopmentTasksSheet: View {
                 guard try DevelopmentTaskReview.fingerprint(latest) == result.transcriptFingerprint else {
                     throw DevelopmentTaskError.transcriptChanged
                 }
-                try app.store.archive.saveDevelopmentTasks(result, for: meeting.id, replacing: expectedReview)
                 review = result
-                savedReview = result
                 currentFingerprint = result.transcriptFingerprint
                 selectedIDs = Set(result.tasks.map(\.id))
+                try app.store.archive.saveDevelopmentTasks(result, for: meeting.id, replacing: expectedReview)
+                savedReview = result
             } catch is CancellationError {
                 // Keep the saved drafts and the user's current edits.
             } catch {

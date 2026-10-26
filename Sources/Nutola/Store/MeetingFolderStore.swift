@@ -35,23 +35,30 @@ final class MeetingFolderStore: ObservableObject {
             iconKind: iconKind,
             iconValue: iconValue,
             iconColorHex: iconColorHex)
-        try? archive.save(folder)
+        do { try archive.save(folder) }
+        catch { PersistenceStatus.shared.report(error) }
         reload()
         return folder
     }
 
     func updateFolder(_ folder: MeetingFolder) {
-        try? archive.save(folder)
+        do { try archive.save(folder) }
+        catch { PersistenceStatus.shared.report(error) }
         reload()
     }
 
     func deleteFolder(id: UUID, meetingRepository: MeetingRepository) {
-        for meeting in meetingRepository.meetings where meeting.folderID == id {
+        let members = meetingRepository.meetings.filter { $0.folderID == id }
+        for meeting in members {
             var m = meeting
             m.folderID = nil
             meetingRepository.upsert(m)
         }
-        try? archive.deleteFolder(id: id)
+        guard !members.contains(where: { meeting in
+            FilePersistence.failures.keys.contains(meetingRepository.archive.folder(for: meeting.id).appendingPathComponent("meeting.json"))
+        }) else { return }
+        do { try archive.deleteFolder(id: id) }
+        catch { PersistenceStatus.shared.report(error); return }
         reload()
     }
 
@@ -67,7 +74,8 @@ final class MeetingFolderStore: ObservableObject {
     func assign(calendarTitle: String, to folderID: UUID, meetingRepository: MeetingRepository) {
         let key = FolderTitleNormalizer.key(for: calendarTitle)
         guard !key.isEmpty else { return }
-        try? archive.setRule(normalizedTitle: key, folderID: folderID)
+        do { try archive.setRule(normalizedTitle: key, folderID: folderID) }
+        catch { PersistenceStatus.shared.report(error); return }
         reload()
         backfillUnfiled(forKey: key, folderID: folderID, meetingRepository: meetingRepository)
     }
@@ -108,7 +116,8 @@ final class MeetingFolderStore: ObservableObject {
         let raw = meeting.calendarEventTitle ?? meeting.title
         let key = FolderTitleNormalizer.key(for: raw)
         guard !key.isEmpty else { return }
-        try? archive.setRule(normalizedTitle: key, folderID: folderID)
+        do { try archive.setRule(normalizedTitle: key, folderID: folderID) }
+        catch { PersistenceStatus.shared.report(error); return }
         reload()
         backfillUnfiled(forKey: key, folderID: folderID, meetingRepository: meetingRepository)
     }

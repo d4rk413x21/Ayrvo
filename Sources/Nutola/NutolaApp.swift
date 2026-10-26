@@ -13,6 +13,7 @@ struct NutolaApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarView()
+                .modifier(PersistenceWarning())
                 .environmentObject(app)
                 .nutolaAppearance()
         } label: {
@@ -25,6 +26,7 @@ struct NutolaApp: App {
         .menuBarExtraStyle(.window)
         Window("Nutola", id: "main") {
             MainWindowView()
+                .modifier(PersistenceWarning())
                 .environmentObject(app)
                 .nutolaAppearance()
         }
@@ -55,6 +57,7 @@ struct NutolaApp: App {
 
         Settings {
             SettingsView()
+                .modifier(PersistenceWarning())
                 .environmentObject(app)
                 .nutolaAppearance()
         }
@@ -218,10 +221,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Finalize in-flight audio files before quitting — an unclosed AAC file has
     /// no moov atom and would be unreadable on the next launch.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        MainActor.assumeIsolated {
-            AppState.shared.prepareForTermination()
+        return MainActor.assumeIsolated {
+            NotificationCenter.default.post(name: .nutolaFlushEdits, object: nil)
+            var discardUnsavedChanges = false
+            if !FilePersistence.failures.isEmpty {
+                let alert = NSAlert()
+                alert.messageText = "Some changes have not been saved"
+                alert.informativeText = "Keep Nutola open and retry saving. Quitting now discards the file contents held in memory."
+                alert.addButton(withTitle: "Keep Nutola Open")
+                alert.addButton(withTitle: "Quit Without Saving")
+                guard alert.runModal() == .alertSecondButtonReturn else { return .terminateCancel }
+                discardUnsavedChanges = true
+            }
+            let mayDiscard = discardUnsavedChanges
+            Task { @MainActor in
+                await AppState.shared.prepareForTermination()
+                sender.reply(toApplicationShouldTerminate: mayDiscard || FilePersistence.failures.isEmpty)
+            }
+            return .terminateLater
         }
-        return .terminateNow
     }
 }
 

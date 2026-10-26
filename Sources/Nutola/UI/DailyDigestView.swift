@@ -481,6 +481,7 @@ struct DailyDigestView: View {
             }
             .buttonStyle(.plain)
             .help("Add to Activity Tracker")
+            .accessibilityLabel("Add to Activity Tracker")
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
@@ -747,6 +748,7 @@ struct DailyDigestView: View {
                         .foregroundStyle(Theme.secondary(scheme))
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel(showPrepSection ? "Collapse meeting preparation" : "Expand meeting preparation")
             }
             if showPrepSection {
                 VStack(alignment: .leading, spacing: 8) {
@@ -953,6 +955,9 @@ private struct TaskRow: View {
             Button("Delete", role: .destructive) { onDelete() }
         }
         .onTapGesture(count: 2) { onEdit() }
+        .accessibilityAction(named: Text("Edit task")) { onEdit() }
+        .focusable()
+        .onKeyPress(.return) { onEdit(); return .handled }
     }
 }
 

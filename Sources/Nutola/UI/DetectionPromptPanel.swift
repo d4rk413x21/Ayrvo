@@ -641,6 +641,7 @@ private struct DetectionPromptView: View {
     .buttonStyle(.plain)
     .onHover { closeHovered = $0 }
     .help("Dismiss")
+    .accessibilityLabel("Dismiss")
   }
 
   private var headerCard: some View {
@@ -688,6 +689,7 @@ private struct DetectionPromptView: View {
       .overlay { FirstMouseClickArea(onClick: onRecord) }
       .onHover { recordHovered = $0 }
       .help("Start recording")
+      .accessibilityLabel("Start recording")
   }
 
   private var takeNotesButtonLabel: some View {
@@ -754,6 +756,11 @@ private struct RecordingPillPanelView: View {
     .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
     .overlay { PillHandleArea(onClick: { minimized.toggle() }) }
     .help(minimized ? "Expand live transcript" : "Minimize")
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Live recording")
+    .accessibilityAction(named: Text("Expand or minimize transcript")) { minimized.toggle() }
+    .focusable()
+    .onKeyPress(.return) { minimized.toggle(); return .handled }
   }
 }
 
@@ -785,6 +792,7 @@ private struct RecordingExpandedCardView: View {
         }
         .buttonStyle(.plain)
         .help("Minimize")
+        .accessibilityLabel("Minimize")
       }
       .background(CardDragArea(pillPanel: pillPanel, onMoved: onMoved))
       transcript

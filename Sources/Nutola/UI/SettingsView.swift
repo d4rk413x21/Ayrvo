@@ -63,7 +63,8 @@ private struct GeneralSettings: View {
     @AppStorage(SettingsKey.developerMode) private var developerMode = false
     @AppStorage(SettingsKey.crashDiagnostics) private var crashDiagnostics = false
     @State private var launchAtLogin = LaunchAtLogin.isOn
-    @State private var systemAudioStatus = SystemAudioPermission.status()
+    @State private var requestingSystemAudio = false
+    @State private var systemAudioError: String?
     @State private var accessibilityTrusted = AccessibilityPermission.isTrusted
     @State private var showResetConfirm = false
 
@@ -150,23 +151,13 @@ private struct GeneralSettings: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    switch systemAudioStatus {
-                    case .unknown:
-                        Button("Grant…") {
-                            Task {
-                                await SystemAudioPermission.request()
-                                systemAudioStatus = SystemAudioPermission.status()
-                            }
-                        }
+                    Button("Request access", action: requestSystemAudio)
                         .controlSize(.small)
-                    case .denied:
-                        Button("Open Settings") {
-                            NSWorkspace.shared.open(SystemAudioPermission.privacySettingsURL)
-                        }
-                        .controlSize(.small)
-                    case .authorized:
-                        EmptyView()
+                        .disabled(requestingSystemAudio)
+                    Button("Open Settings") {
+                        NSWorkspace.shared.open(SystemAudioPermission.privacySettingsURL)
                     }
+                    .controlSize(.small)
                 }
                 HStack(alignment: .firstTextBaseline) {
                     StatusDot(ok: accessibilityTrusted)
@@ -270,12 +261,10 @@ private struct GeneralSettings: View {
         .onAppear {
             micStatus = MicRecorder.permissionGranted
             launchAtLogin = LaunchAtLogin.isOn
-            systemAudioStatus = SystemAudioPermission.status()
             accessibilityTrusted = AccessibilityPermission.isTrusted
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             micStatus = MicRecorder.permissionGranted
-            systemAudioStatus = SystemAudioPermission.status()
             accessibilityTrusted = AccessibilityPermission.isTrusted
         }
     }
@@ -286,26 +275,19 @@ private struct GeneralSettings: View {
             : "Optional — labels Zoom speakers by name. Click Grant, then enable Nutola under Accessibility."
     }
 
-    private var systemAudioOK: Bool? {
-        if systemAudioStatus == .authorized { return true }
-        if systemAudioStatus == .denied { return false }
-        return nil
-    }
+    private var systemAudioOK: Bool? { nil }
 
     private var systemAudioSettingsDetail: String {
-        if systemAudioConfirmed, systemAudioStatus != .authorized {
-            return "Previously captured call audio, but macOS no longer shows an active grant — click Grant to re-allow."
-        }
-        if systemAudioConfirmed {
-            return "Records the other participants. Confirmed capturing audio in a previous recording."
-        }
-        switch systemAudioStatus {
-        case .authorized:
-            return "Allowed — records the other participants on calls."
-        case .denied:
-            return "Denied — enable Nutola under System Audio Recording Only in Settings."
-        case .unknown:
-            return "Records the other participants. Click Grant — macOS will ask to allow system audio recording."
+        systemAudioError ?? SystemAudioPermission.guidance(previouslyCaptured: systemAudioConfirmed)
+    }
+
+    private func requestSystemAudio() {
+        requestingSystemAudio = true
+        systemAudioError = nil
+        Task {
+            defer { requestingSystemAudio = false }
+            do { try await SystemAudioPermission.request() }
+            catch { systemAudioError = error.localizedDescription }
         }
     }
 
@@ -462,6 +444,7 @@ private struct CalendarSettings: View {
                                 .buttonStyle(.plain)
                                 .foregroundStyle(Theme.blueberry)
                                 .help("Unarchive series")
+                                .accessibilityLabel("Unarchive series")
                             }
                             .contentShape(Rectangle())
                             .onTapGesture(count: 2) {
@@ -483,6 +466,7 @@ private struct CalendarSettings: View {
                                 .buttonStyle(.plain)
                                 .foregroundStyle(Theme.blueberry)
                                 .help("Unarchive event")
+                                .accessibilityLabel("Unarchive event")
                             }
                             .contentShape(Rectangle())
                             .onTapGesture(count: 2) {
@@ -917,6 +901,7 @@ private struct IntelligenceSettings: View {
                             }
                             .buttonStyle(.plain)
                             .help("Copy the claude mcp add command")
+                            .accessibilityLabel("Copy the claude mcp add command")
                         }
                         Text("Or add the \"nutola\" entry to Claude Desktop's config (merge into any existing \"mcpServers\"):")
                             .font(.nutola(11))
@@ -972,6 +957,7 @@ private struct IntelligenceSettings: View {
                             }
                             .buttonStyle(.plain)
                             .help("Copy the codex mcp add command")
+                            .accessibilityLabel("Copy the codex mcp add command")
                         }
                         Button("Reveal config in Finder") {
                             NSWorkspace.shared.activateFileViewerSelecting([codexConfigURL])
@@ -1052,14 +1038,17 @@ private struct TemplateSettings: View {
                         while templates.contains(where: { $0.name == name }) {
                             name = "New Template \(n)"; n += 1
                         }
-                        try? app.templates.save(SummaryTemplate(
-                            name: name,
-                            body: "# {{title}}\n\n## Highlights\nWhat mattered most.\n"))
-                        reload(select: name)
+                        do {
+                            try app.templates.save(SummaryTemplate(
+                                name: name,
+                                body: "# {{title}}\n\n## Highlights\nWhat mattered most.\n"))
+                            reload(select: name)
+                        } catch { saveError = error.localizedDescription }
                     } label: {
                         Image(systemName: "plus")
                     }
                     .help("New template")
+                    .accessibilityLabel("New template")
                     Button {
                         guard let selected else {
                             NutolaConsoleLog.app("[TemplateSettings] delete: no selection")
@@ -1080,12 +1069,14 @@ private struct TemplateSettings: View {
                     }
                     .disabled(selected == nil)
                     .help("Delete template")
+                    .accessibilityLabel("Delete template")
                     Button {
                         aiError = nil; showAISheet = true
                     } label: {
                         Image(systemName: "sparkles")
                     }
                     .help("Generate template with AI")
+                    .accessibilityLabel("Generate template with AI")
                     Spacer()
                 }
                 .buttonStyle(.plain)
@@ -1122,6 +1113,7 @@ private struct TemplateSettings: View {
                         .buttonStyle(.bordered)
                         .tint(actionColor)
                         .help("Generate a new template with AI")
+                        .accessibilityLabel("Generate a new template with AI")
                         Button("Save") { save() }
                             .buttonStyle(.borderedProminent)
                             .tint(actionColor)
@@ -1314,6 +1306,8 @@ private struct AppearanceSettings: View {
                         }
                         .buttonStyle(.plain)
                         .help(preset.name)
+                        .accessibilityLabel("Action color: \(preset.name)")
+                        .accessibilityValue(actionColorHex.uppercased() == preset.rawValue ? "Selected" : "Not selected")
                     }
                 }
 
@@ -1333,6 +1327,7 @@ private struct AppearanceSettings: View {
                         }
                         .controlSize(.small)
                         .help("Reset the action color to the default Medium green")
+                        .accessibilityLabel("Reset the action color to the default Medium green")
                     }
                 }
                 Text("Used for Record, Save, and other prominent buttons. Adjusted automatically for readable labels in each theme.")
@@ -1379,7 +1374,7 @@ private struct DebugSettings: View {
         panel.nameFieldStringValue = "nutola-logs-\(Int(Date().timeIntervalSince1970)).txt"
         panel.allowedContentTypes = [.plainText]
         if panel.runModal() == .OK, let url = panel.url {
-            try? text.write(to: url, atomically: true, encoding: .utf8)
+            try? FilePersistence.write(Data(text.utf8), to: url)
         }
     }
 
@@ -1399,6 +1394,8 @@ struct StatusDot: View {
             .fill(color)
             .frame(width: 9, height: 9)
             .padding(.top, 3)
+            .accessibilityLabel("Status")
+            .accessibilityValue(ok.map { $0 ? "Available" : "Unavailable" } ?? "Not verified")
     }
 
     private var color: Color {

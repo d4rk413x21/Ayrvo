@@ -87,6 +87,7 @@ enum ProcessingPipeline {
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
         var draft: (text: String, provider: String)?
+        var expectedSummary = archive.summary(for: id)
         let userNotes = archive.sideNotes(for: id)
         if !draftInput.isEmpty {
             NutolaConsoleLog.pipeline("drafting from live transcript (\(draftInput.count) chars)")
@@ -99,12 +100,16 @@ enum ProcessingPipeline {
                 // fails, leaving `draft` nil lets the improvement pass save normally
                 // rather than the edit-guard (disk == draft.text) blocking it too.
                 do {
-                    try archive.saveSummary(text, for: id)
+                    try archive.saveSummary(text, for: id, replacing: expectedSummary)
+                    expectedSummary = text
                     draft = (text, provider)
                     outcome.summaryProvider = provider
                     onSummary(.draftSaved)
                     NutolaConsoleLog.pipeline("draft saved via \(provider) (\(text.count) chars)")
+                } catch MeetingArchive.ArchiveError.summaryChanged {
+                    onSummary(.done)
                 } catch {
+                    expectedSummary = text
                     NutolaConsoleLog.pipeline("draft save failed — \(error.localizedDescription)")
                     onSummary(.done)
                 }
@@ -257,7 +262,13 @@ enum ProcessingPipeline {
             echoEvidence: echoEvidence)
         let offsetSegments = Self.offsetSegments(segments, by: appendOffset)
         let mergedSegments = priorSegments + offsetSegments
-        try? archive.saveTranscript(mergedSegments, for: id)
+        do { try archive.saveTranscript(mergedSegments, for: id) }
+        catch {
+            outcome.state = .failed
+            outcome.notice = "The transcript could not be saved. Keep Nutola open and retry saving."
+            onSummary(.done)
+            return outcome
+        }
         // The meeting may still hold provisional live speakers ("me"/"them").
         // Once the final transcript replaces live.json, never keep speaker
         // identities that are absent from the saved transcript.
@@ -308,7 +319,7 @@ enum ProcessingPipeline {
         case .success(let summary, let provider):
             // Edit-guard: if the user edited the draft while we were transcribing,
             // keep their version rather than clobbering it with the improvement.
-            if draft == nil || archive.summary(for: id) == draft?.text {
+            if archive.summary(for: id) == expectedSummary {
                 // Annotate the notes with Zoom participants who joined but weren't
                 // on the calendar invite — the call host can see who actually
                 // showed up even when the invite didn't list them. Only when the
@@ -318,9 +329,16 @@ enum ProcessingPipeline {
                     attendees: meeting.attendees)
                     .map { summary + "\n\n" + $0 }
                     ?? summary
-                try? archive.saveSummary(annotated, for: id)
-                savedSummary = annotated
-                outcome.summaryProvider = provider
+                do {
+                    try archive.saveSummary(annotated, for: id, replacing: expectedSummary)
+                    savedSummary = annotated
+                    outcome.summaryProvider = provider
+                } catch MeetingArchive.ArchiveError.summaryChanged {
+                    // A user edit won the race; keep it.
+                } catch {
+                    outcome.state = .failed
+                    notices.append("The summary could not be saved. Keep Nutola open and retry saving.")
+                }
             }
         case .failure(let why):
             // Improvement failed but the draft (if any) stands.

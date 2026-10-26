@@ -203,6 +203,7 @@ struct CrashHistoryPanel: View {
             }
             .buttonStyle(.plain)
             .help("Delete this crash record")
+            .accessibilityLabel("Delete this crash record")
             .opacity(hovered || selected ? 1 : 0.5)
         }
         .padding(.trailing, 10)
@@ -213,6 +214,9 @@ struct CrashHistoryPanel: View {
         .contentShape(Rectangle())
         .onHover { hoveredID = $0 ? crash.id : (hoveredID == crash.id ? nil : hoveredID) }
         .onTapGesture { selectedID = crash.id }
+        .accessibilityAction(named: Text("Show crash details")) { selectedID = crash.id }
+        .focusable()
+        .onKeyPress(.return) { selectedID = crash.id; return .handled }
     }
 
     private func kindIcon(_ kind: String) -> some View {
@@ -281,6 +285,7 @@ struct CrashHistoryPanel: View {
             }
             .buttonStyle(.plain)
             .help("Copy this crash record")
+            .accessibilityLabel("Copy this crash record")
         }
         .padding(12)
     }
@@ -301,6 +306,6 @@ struct CrashHistoryPanel: View {
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let dest = panel.url else { return }
         let text = CrashDiagnosticLog.allCrashesText()
-        try? text.data(using: .utf8)?.write(to: dest, options: .atomic)
+        try? FilePersistence.write(Data(text.utf8), to: dest)
     }
 }

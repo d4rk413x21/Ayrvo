@@ -275,6 +275,7 @@ struct AILauncherView: View {
         }
         .buttonStyle(.plain)
         .help("Close")
+        .accessibilityLabel("Close")
     }
 
     private var composeHero: some View {
@@ -388,6 +389,7 @@ struct AILauncherView: View {
         .menuStyle(.borderlessButton)
         .fixedSize()
         .help("Change assistant or how questions are answered")
+        .accessibilityLabel("Change assistant or how questions are answered")
     }
 
     private var badgeIcon: String {
@@ -424,6 +426,7 @@ struct AILauncherView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Stop")
+                .accessibilityLabel("Stop")
             } else {
                 let canSubmit = available && !input.trimmingCharacters(in: .whitespaces).isEmpty
                 Button(action: launchTyped) {
@@ -438,6 +441,7 @@ struct AILauncherView: View {
                 .buttonStyle(.plain)
                 .disabled(!canSubmit)
                 .help(submitHelp)
+                .accessibilityLabel("Send question")
             }
         }
     }
@@ -470,6 +474,7 @@ struct AILauncherView: View {
         .disabled(!canSave)
         .opacity(canSave ? 1 : 0)
         .help("Save as recipe")
+        .accessibilityLabel("Save as recipe")
         .animation(.easeOut(duration: 0.18), value: didSaveRecipe)
     }
 
@@ -880,6 +885,8 @@ private struct AskChatBubble: View {
         }
         .buttonStyle(.plain)
         .help(didCopy ? "Copied" : "Copy")
+        .accessibilityLabel("Copy message")
+        .accessibilityValue(didCopy ? "Copied" : "")
     }
 
     private func copyText() {
