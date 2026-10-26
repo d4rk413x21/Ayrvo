@@ -9,7 +9,7 @@ struct MeetingDetailView: View {
     @State private var meeting: Meeting
     @State private var panelMode: GranolaPanelMode?
     @State private var title: String
-    @State private var publishState: PublishState = .idle
+    @State private var previewError: String?
     @State private var showDeleteConfirm = false
     @State private var notesDraft: String?
     @State private var transcriptDraft: String?
@@ -20,23 +20,11 @@ struct MeetingDetailView: View {
     @State private var decisionsExpanded = true
     @State private var showShareNotes = false
     @State private var showDevelopmentTasks = false
-    @State private var shareNotesState: ShareNotesState = .idle
+    @State private var copiedShareNotes = false
     @AppStorage(SettingsKey.sideNotesPanelWidth) private var sideNotesWidth = 280.0
 
     var backTitle: String?
     var onBack: (() -> Void)?
-
-    enum PublishState: Equatable {
-        case idle, working
-        case done(URL)
-        case failed(String)
-    }
-
-    enum ShareNotesState: Equatable {
-        case idle, working
-        case done
-        case failed(String)
-    }
 
     init(meeting: Meeting, backTitle: String? = nil, onBack: (() -> Void)? = nil) {
         _meeting = State(initialValue: meeting)
@@ -217,13 +205,7 @@ struct MeetingDetailView: View {
             Button("Share notes", systemImage: "square.and.arrow.up") { showShareNotes = true }
                 .labelStyle(.iconOnly)
                 .help("Share notes")
-            publishMenu
-        }
-        if case .done = publishState {
-            ToolbarItem(placement: .status) {
-                Label("Shared", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.secondary)
-            }
+            actionsMenu
         }
     }
 
@@ -730,11 +712,11 @@ struct MeetingDetailView: View {
                 primaryActionTitle: noticePrimaryActionTitle,
                 primaryActionIcon: noticePrimaryActionIcon,
                 primaryAction: noticePrimaryAction)
-        } else if case .failed(let why) = publishState {
+        } else if let previewError {
             MeetingNoticeBanner(
                 presentation: MeetingNotice.Presentation(
-                    title: "Couldn't publish",
-                    message: why,
+                    title: "Couldn't preview",
+                    message: previewError,
                     systemImage: "xmark.circle",
                     isEmptyTranscript: false))
         }
@@ -922,7 +904,7 @@ struct MeetingDetailView: View {
         return (event.joinLabel, url)
     }
 
-    private var publishMenu: some View {
+    private var actionsMenu: some View {
         Menu {
             Button("Copy notes") { copyNotes() }
             Button("Preview in browser") { previewInBrowser() }
@@ -951,11 +933,7 @@ struct MeetingDetailView: View {
             Divider()
             Button("Move to trash", role: .destructive) { showDeleteConfirm = true }
         } label: {
-            if publishState == .working {
-                ProgressView().controlSize(.small)
-            } else {
-                Label("More actions", systemImage: "ellipsis")
-            }
+            Label("More actions", systemImage: "ellipsis")
         }
         .menuStyle(.borderlessButton)
         .labelStyle(.iconOnly)
@@ -993,36 +971,9 @@ struct MeetingDetailView: View {
         NSPasteboard.general.setString(text, forType: .string)
     }
 
-    private func publish() {
-        publishState = .working
-        let m = meeting
-        let summary = app.store.summary(for: m.id)
-        let segments = app.store.transcript(for: m.id)
-        Task {
-            do {
-                let html = HTMLExporter.html(meeting: m, summaryMarkdown: summary, segments: segments)
-                let (_, rendered) = try await GitHubGist.publish(
-                    html: html,
-                    filename: "meeting.html",
-                    description: "Ayrvo meeting notes — \(m.title)")
-                if var fresh = app.store.meeting(id: m.id) {
-                    fresh.publishedURL = rendered.absoluteString
-                    app.store.upsert(fresh)
-                }
-                publishState = .done(rendered)
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(rendered.absoluteString, forType: .string)
-            } catch {
-                publishState = .failed(error.localizedDescription)
-            }
-        }
-    }
-
     // MARK: - Share Notes
 
-    /// Sheet with three ways to share the read-only notes page: copy the HTML
-    /// to the pasteboard, save it to disk via NSSavePanel, or publish a secret
-    /// gist and reveal the rendered notes.nutola.to URL.
+    /// Copies the read-only notes HTML to the pasteboard or saves it locally.
     private var shareNotesSheet: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Header
@@ -1045,25 +996,18 @@ struct MeetingDetailView: View {
                 shareActionCard(
                     icon: "doc.on.doc",
                     title: "Copy HTML",
-                    subtitle: "Copy to clipboard",
-                    isPrimary: false
+                    subtitle: "Copy to clipboard"
                 ) { copyShareNotesHTML() }
 
                 shareActionCard(
                     icon: "square.and.arrow.down",
                     title: "Save HTML",
-                    subtitle: "Save as a file",
-                    isPrimary: false
+                    subtitle: "Save as a file"
                 ) { saveShareNotesHTML() }
-
-
             }
 
             // Status
-            switch shareNotesState {
-            case .idle, .working:
-                EmptyView()
-            case .done:
+            if copiedShareNotes {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(Theme.mint(scheme))
@@ -1074,17 +1018,6 @@ struct MeetingDetailView: View {
                 }
                 .padding(10)
                 .background(Theme.mint(scheme).opacity(0.08),
-                           in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            case .failed(let message):
-                HStack(spacing: 6) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.red)
-                    Text(message)
-                        .font(.nutola(11))
-                        .foregroundStyle(.red)
-                }
-                .padding(10)
-                .background(Color.red.opacity(0.08),
                            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
 
@@ -1098,24 +1031,23 @@ struct MeetingDetailView: View {
         }
         .padding(24)
         .frame(width: 440, height: 360)
-        .onDisappear { shareNotesState = .idle }
+        .onDisappear { copiedShareNotes = false }
     }
 
     private func shareActionCard(
         icon: String,
         title: String,
         subtitle: String,
-        isPrimary: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.nutola(18, .medium))
-                    .foregroundStyle(isPrimary ? .white : actionColor)
+                    .foregroundStyle(actionColor)
                     .frame(width: 36, height: 36)
                     .background(
-                        isPrimary ? actionColor.opacity(0.15) : actionColor.opacity(0.08),
+                        actionColor.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
                 VStack(alignment: .leading, spacing: 2) {
@@ -1133,14 +1065,8 @@ struct MeetingDetailView: View {
             }
             .padding(12)
             .background(
-                isPrimary
-                    ? Theme.card(scheme)
-                    : Theme.card(scheme).opacity(0.7),
+                Theme.card(scheme).opacity(0.7),
                 in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(isPrimary ? actionColor.opacity(0.2) : .clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -1160,7 +1086,7 @@ struct MeetingDetailView: View {
             meeting: m, summary: summary, transcript: turns, actionItems: items)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(html, forType: .string)
-        shareNotesState = .done
+        copiedShareNotes = true
     }
 
     private func saveShareNotesHTML() {
@@ -1175,6 +1101,7 @@ struct MeetingDetailView: View {
     }
 
     private func previewInBrowser() {
+        previewError = nil
         let html = HTMLExporter.html(
             meeting: meeting,
             summaryMarkdown: app.store.summary(for: meeting.id),
@@ -1186,7 +1113,7 @@ struct MeetingDetailView: View {
             try FilePersistence.write(Data(html.utf8), to: file)
             NSWorkspace.shared.open(file)
         } catch {
-            publishState = .failed(error.localizedDescription)
+            previewError = error.localizedDescription
         }
     }
 

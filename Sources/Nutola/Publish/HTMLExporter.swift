@@ -1,7 +1,7 @@
 import Foundation
 
 /// Renders a meeting as a single self-contained HTML page (inline CSS, no external
-/// assets) suitable for publishing as a gist.
+/// assets) for local preview and export.
 enum HTMLExporter {
     static func html(meeting: Meeting, summaryMarkdown: String, segments: [TranscriptSegment]) -> String {
         let df = DateFormatter()

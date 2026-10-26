@@ -46,6 +46,26 @@ final class StoreTests {
         #expect(archive.allMeetings() == [m])
     }
 
+    @Test func testEditingLegacyMeetingPreservesLinkMetadata() throws {
+        let meeting = makeMeeting()
+        try archive.save(meeting)
+        let file = archive.folder(for: meeting.id).appendingPathComponent("meeting.json")
+        var json = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        let legacyURL = "https://legacy.invalid/shared/meeting"
+        json["publishedURL"] = legacyURL
+        try JSONSerialization.data(withJSONObject: json).write(to: file)
+
+        var loaded = try #require(archive.meeting(id: meeting.id))
+        loaded.title = "Updated meeting"
+        try archive.save(loaded)
+
+        let saved = try #require(archive.meeting(id: meeting.id))
+        #expect(saved.title == "Updated meeting")
+        #expect(saved.publishedURL == legacyURL)
+        let savedJSON = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        #expect(savedJSON["publishedURL"] as? String == legacyURL)
+    }
+
     @Test func testReadsExistingISODatesWithAndWithoutFractionalSeconds() throws {
         let meeting = makeMeeting()
         try archive.save(meeting)

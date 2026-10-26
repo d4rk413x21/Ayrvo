@@ -555,7 +555,6 @@ private struct IntelligenceSettings: View {
     @Environment(\.nutolaActionColor) private var actionColor
     @State private var claudeInstalled = false
     @State private var claudeLoggedIn = false
-    @State private var ghAvailable = false
     @State private var claudeCodeAvailable = false
     @State private var codexInstalled = false
     @State private var codexLoggedIn = false
@@ -613,18 +612,6 @@ private struct IntelligenceSettings: View {
                             ? "Used as a fallback when a meeting is too long for the on-device model to summarize. Billed to your own Claude plan."
                             : "Open Claude Code and log in once to enable this.")
                         : "Install from claude.com/claude-code to unlock long-meeting summaries when Apple Intelligence can't fit the transcript.")
-                actionRow(
-                    ok: ghAvailable,
-                    title: ghAvailable ? "GitHub CLI — ready" : "GitHub CLI — not found",
-                    detail: "Publishes meeting pages as secret gists on your own GitHub account."
-                ) {
-                    if !ghAvailable {
-                        Button("Set it up with Claude") { ClaudeCode.setUpGitHubCLI() }
-                            .controlSize(.small)
-                            .disabled(!claudeCodeAvailable)
-                    }
-                }
-
                 if preferredAIProvider.isCloud {
                     Toggle("Always use \(preferredAIProvider.displayName) for summaries", isOn: $preferClaudeSummaries)
                         .disabled(!cloudAssistantReady)
@@ -726,7 +713,6 @@ private struct IntelligenceSettings: View {
         .onAppear {
             claudeInstalled = ClaudeCLI.isInstalled
             codexInstalled = CodexCLI.isInstalled
-            ghAvailable = GitHubGist.isAvailable
             claudeCodeAvailable = ClaudeCode.isAvailable
             codexSetupAvailable = CodexSetup.isAvailable
             Task.detached {
@@ -979,20 +965,6 @@ private struct IntelligenceSettings: View {
                 Text(detail).font(.nutola(11)).foregroundStyle(.secondary)
             }
             Spacer()
-        }
-    }
-
-    private func actionRow<Action: View>(
-        ok: Bool, title: String, detail: String, @ViewBuilder action: () -> Action
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            StatusDot(ok: ok)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.nutola(12, .medium))
-                Text(detail).font(.nutola(11)).foregroundStyle(.secondary)
-            }
-            Spacer()
-            action()
         }
     }
 
