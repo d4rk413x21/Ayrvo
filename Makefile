@@ -17,7 +17,7 @@ SIGN_ID    ?= -
 # signature (no runtime/entitlements) if ever needed for debugging.
 HARDENED   ?= 1
 ifeq ($(HARDENED),1)
-RUNTIME_ARGS := -o runtime --entitlements packaging/Nutola.entitlements
+RUNTIME_ARGS := -o runtime --entitlements packaging/Ayrvo.entitlements
 else
 RUNTIME_ARGS :=
 endif
@@ -44,7 +44,7 @@ app: build
 	cp Resources/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
 	cp LICENSE "$(APP)/Contents/Resources/LICENSE"
 	@# SwiftPM resource bundle (menu bar icon) must ride along or Bundle.module lookups fail
-	cp -R ".build/release/$(APP_NAME)_Nutola.bundle" "$(APP)/Contents/Resources/"
+	cp -R ".build/release/$(APP_NAME)_Ayrvo.bundle" "$(APP)/Contents/Resources/"
 	@# RUNTIME_ARGS is empty for local dev (HARDENED=0) and adds -o runtime + entitlements
 	@# for the notarizable release build (HARDENED=1). All entitlements are
 	@# com.apple.security.* keys, honored ad-hoc with no provisioning profile.
@@ -71,7 +71,7 @@ relaunch:
 # Regenerate the nav-bar template glyphs loaded via Bundle.module.
 nav-icon:
 	swift scripts/MakeIcon.swift Resources menu
-	cp Resources/NavIcon.png Resources/NavIcon@2x.png Sources/Nutola/Resources/
+	cp Resources/NavIcon.png Resources/NavIcon@2x.png Sources/Ayrvo/Resources/
 	rm -f Resources/NavIcon.png Resources/NavIcon@2x.png Resources/NavIcon-preview.png
 
 # Regenerate the app icon sizes and .icns from the approved Resources/AyrvoIcon.png.

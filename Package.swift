@@ -6,7 +6,7 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "Ayrvo", targets: ["Nutola"]),
+        .executable(name: "Ayrvo", targets: ["Ayrvo"]),
         .executable(name: "zoom-info", targets: ["zoom-info"]),
     ],
     dependencies: [
@@ -24,12 +24,12 @@ let package = Package(
             publicHeadersPath: "include"
         ),
         .executableTarget(
-            name: "Nutola",
+            name: "Ayrvo",
             dependencies: [
                 .product(name: "FluidAudio", package: "FluidAudio"),
                 "ExceptionCatch",
             ],
-            path: "Sources/Nutola",
+            path: "Sources/Ayrvo",
             resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
@@ -39,9 +39,9 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
-            name: "NutolaTests",
-            dependencies: ["Nutola"],
-            path: "Tests/NutolaTests",
+            name: "AyrvoTests",
+            dependencies: ["Ayrvo"],
+            path: "Tests/AyrvoTests",
             resources: [.copy("Fixtures")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

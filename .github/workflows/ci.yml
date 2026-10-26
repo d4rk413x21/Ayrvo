@@ -24,7 +24,7 @@ jobs:
       - name: Detect packaging changes
         id: packaging
         run: |
-          if git diff --quiet HEAD^ HEAD -- Makefile Package.swift Package.resolved packaging/ Sources/Nutola/App/AppIdentity.swift .github/workflows/ci.yml .github/workflows/release.yml; then
+          if git diff --quiet HEAD^ HEAD -- Makefile Package.swift Package.resolved packaging/ Sources/Ayrvo/App/AppIdentity.swift .github/workflows/ci.yml .github/workflows/release.yml; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"

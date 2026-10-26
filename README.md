@@ -171,8 +171,8 @@ Tests use Swift Testing from the toolchain; no separate testing dependency is
 needed. Suites that share process-wide state are serialized. Tests requiring
 Apple Intelligence are skipped when that provider is unavailable.
 
-The executable product is `Ayrvo`. Source and test module names retain `Nutola`
-internally to keep the rename focused on application identity and compatibility.
+The executable and source module are named `Ayrvo`; tests use `AyrvoTests`.
+Sources live under `Sources/Ayrvo/` and tests under `Tests/AyrvoTests/`.
 The `zoom-info` executable remains a separate utility.
 
 Publishing a versioned GitHub release triggers the release workflow, which builds
