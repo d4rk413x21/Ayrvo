@@ -208,7 +208,7 @@ struct OnboardingView: View {
         OnboardingStepRow(
             icon: "message.badge.filled.fill", title: "Claude Desktop", required: false,
             detail: claudeDesktopInstalled
-                ? "Installed — Chat and \"Ask your meetings\" open here. Add the nutola connector in Settings → Connect Claude if you haven't."
+                ? "Installed — Chat and \"Ask your meetings\" open here. Add the ayrvo connector in Settings → Intelligence if you haven't."
                 : "Required for chat — Ayrvo's Chat and \"Ask your meetings\" screens open a pre-filled prompt in Claude Desktop.",
             ok: claudeDesktopInstalled
         ) {

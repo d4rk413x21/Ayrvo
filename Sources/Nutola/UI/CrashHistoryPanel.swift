@@ -302,7 +302,7 @@ struct CrashHistoryPanel: View {
     private func exportCrashes() {
         let panel = NSSavePanel()
         panel.title = "Export Crash History"
-        panel.nameFieldStringValue = "nutola-crash-history.txt"
+        panel.nameFieldStringValue = "ayrvo-crash-history.txt"
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let dest = panel.url else { return }
         let text = CrashDiagnosticLog.allCrashesText()
