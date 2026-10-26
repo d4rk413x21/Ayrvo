@@ -142,9 +142,8 @@ also exposes editing and deletion tools; grant only the access you intend to use
   send meeting text through its configured account and model.
 - Linear receives selected task content. Connecting also loads workspace, team,
   and project metadata. API keys are stored in the macOS login Keychain.
-- Sharing is optional. GitHub gists are **unlisted, not private**. The inherited
-  rendered-link service uses `notes.nutola.to`; local HTML, Markdown, PDF, and CSV
-  exports are also available.
+- Sharing uses local HTML files or the clipboard. HTML, Markdown, PDF, CSV, and
+  subtitle exports are available without an online publishing service.
 
 Recordings, transcripts, notes, and drafts remain in
 `~/Library/Application Support/Nutola/`. Back up this directory to retain your

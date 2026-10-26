@@ -5,9 +5,7 @@ import Foundation
 /// carries the meeting title and date, the summary (markdown → basic HTML),
 /// action items as a checkbox list, and the speaker-labeled transcript.
 ///
-/// `exportHTML` is the pure renderer; `exportToFile` and `publishToGist` are the
-/// convenience flows that write the page to a temp file or publish it through
-/// `GitHubGist`.
+/// `exportHTML` renders the page; `exportToFile` writes it to a local temp file.
 enum SharedNotesExporter {
     /// Renders the shared-notes HTML page for the given meeting.
     static func exportHTML(
@@ -153,28 +151,8 @@ enum SharedNotesExporter {
         let safeName = meeting.title.replacingOccurrences(of: "/", with: "-")
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("Ayrvo — \(safeName) — \(UUID().uuidString).html")
-        guard let data = html.data(using: .utf8) else {
-            throw GistError.failed("Could not encode shared notes HTML as UTF-8.")
-        }
-        try data.write(to: file, options: .atomic)
+        try Data(html.utf8).write(to: file, options: .atomic)
         return file
-    }
-
-    /// Publishes the shared-notes HTML as a secret gist and returns the
-    /// rendered (notes.nutola.to) URL. Requires `gh` to be installed and
-    /// authenticated.
-    static func publishToGist(
-        meeting: Meeting,
-        summary: String,
-        transcript: [TranscriptTurn],
-        actionItems: [ActionItem]
-    ) async throws -> URL {
-        let html = exportHTML(meeting: meeting, summary: summary, transcript: transcript, actionItems: actionItems)
-        let (_, rendered) = try await GitHubGist.publish(
-            html: html,
-            filename: "notes.html",
-            description: "Ayrvo shared notes — \(meeting.title)")
-        return rendered
     }
 
     // MARK: - Markdown

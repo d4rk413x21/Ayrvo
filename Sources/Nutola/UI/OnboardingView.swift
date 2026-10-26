@@ -17,7 +17,6 @@ struct OnboardingView: View {
     @State private var claudeInstalled = ClaudeCLI.isInstalled
     @State private var claudeLoggedIn = false
     @State private var claudeDesktopInstalled = ClaudeDesktop.isInstalled
-    @State private var ghAvailable = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,7 +40,6 @@ struct OnboardingView: View {
                     calendarRow
                     claudeRow
                     claudeDesktopRow
-                    githubRow
                 }
                 .padding(.horizontal, 24)
             }
@@ -67,8 +65,7 @@ struct OnboardingView: View {
             Task { await app.refreshNotificationStatus() }
             Task.detached {
                 let loggedIn = ClaudeCLI.isLoggedIn()
-                let gh = GitHubGist.isAvailable // shells out; keep off-main here
-                await MainActor.run { claudeLoggedIn = loggedIn; ghAvailable = gh }
+                await MainActor.run { claudeLoggedIn = loggedIn }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -220,19 +217,6 @@ struct OnboardingView: View {
         }
     }
 
-    private var githubRow: some View {
-        OnboardingStepRow(
-            icon: "chevron.left.forwardslash.chevron.right", title: "GitHub access", required: false,
-            detail: ghAvailable ? "Ready — publishes meeting pages as secret gists on your own account." : "Optional — needed only to publish meeting pages.",
-            ok: ghAvailable
-        ) {
-            if !ghAvailable {
-                Button("Set it up with Claude") { ClaudeCode.setUpGitHubCLI() }
-                    .controlSize(.small)
-                    .disabled(!claudeDesktopInstalled)
-            }
-        }
-    }
 }
 
 private struct OnboardingStepRow<Action: View>: View {

@@ -50,6 +50,7 @@ struct Meeting: Codable, Identifiable, Equatable, Sendable {
     var templateName: String?
     /// Human-readable reason when state == .failed, or a non-fatal warning otherwise.
     var notice: String?
+    /// Retained only to preserve legacy link metadata when existing archives are saved.
     var publishedURL: String?
     /// Which engine produced the summary: "apple", "claude", or "codex".
     var summaryProvider: String?

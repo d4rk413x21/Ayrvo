@@ -82,8 +82,8 @@ enum ClaudeDesktopPrompt {
 }
 
 /// Deep-link launcher for a Claude Code session (claude://code/new). Unlike
-/// ClaudeDesktop's chat link, Claude Code can actually run the setup — install
-/// the GitHub CLI, register the MCP server, edit the Claude Desktop config — so
+/// ClaudeDesktop's chat link, Claude Code can actually run the setup —
+/// register the MCP server or edit the Claude Desktop config — so
 /// the "do it for you" buttons in Settings/Onboarding open a Code session
 /// pre-filled with a prompt that performs the step (the user still reviews and
 /// approves before anything runs).
@@ -115,16 +115,6 @@ enum ClaudeCode {
     }
 
     // MARK: - Pre-filled setup prompts
-
-    @discardableResult
-    static func setUpGitHubCLI() -> Bool {
-        open(prompt: """
-        Set up the GitHub CLI so Ayrvo can publish my meeting notes as secret gists on my own \
-        GitHub account. Check whether the gh command is installed; if not, install it (use \
-        Homebrew if it is available, otherwise recommend the best option for my Mac). Then run \
-        gh auth login and confirm it worked with gh auth status.
-        """)
-    }
 
     @discardableResult
     static func addMCPServer(binary: String) -> Bool {

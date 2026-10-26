@@ -23,7 +23,7 @@ enum Bootstrap {
     }
 
     static func main() {
-        // A claude/gh subprocess (or the MCP client) exiting before draining a
+        // An AI CLI subprocess (or the MCP client) exiting before draining a
         // pipe would otherwise SIGPIPE-kill the whole app mid-recording.
         signal(SIGPIPE, SIG_IGN)
         let arguments = Array(CommandLine.arguments.dropFirst())

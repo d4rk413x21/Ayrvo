@@ -88,9 +88,9 @@ struct ClaudeDesktopTests {
     }
 
     @Test func testCodeSessionURLCarriesPromptAndFolder() {
-        let url = ClaudeCode.codeSessionURL(prompt: "install gh", folder: "/Users/me")!
+        let url = ClaudeCode.codeSessionURL(prompt: "configure the connector", folder: "/Users/me")!
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        #expect(items.first(where: { $0.name == "q" })?.value == "install gh")
+        #expect(items.first(where: { $0.name == "q" })?.value == "configure the connector")
         #expect(items.first(where: { $0.name == "folder" })?.value == "/Users/me")
     }
 
