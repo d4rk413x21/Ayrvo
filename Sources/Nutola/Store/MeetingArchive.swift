@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// File-backed meeting storage. One folder per meeting:
 ///
@@ -24,17 +25,17 @@ final class MeetingArchive: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "io.github.d4rk413x21.Nutola.archive")
     // ISO8601 with fractional seconds so Dates round-trip losslessly enough for Equatable.
-    private static let dateFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
+    private static let dateFormatter = Mutex<ISO8601DateFormatter>({
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }())
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         e.dateEncodingStrategy = .custom { date, enc in
             var c = enc.singleValueContainer()
-            try c.encode(MeetingArchive.dateFormatter.string(from: date))
+            try c.encode(MeetingArchive.dateFormatter.withLock { $0.string(from: date) })
         }
         return e
     }()
@@ -42,7 +43,7 @@ final class MeetingArchive: @unchecked Sendable {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .custom { dec in
             let s = try dec.singleValueContainer().decode(String.self)
-            guard let date = MeetingArchive.dateFormatter.date(from: s)
+            guard let date = MeetingArchive.dateFormatter.withLock({ $0.date(from: s) })
                 ?? ISO8601DateFormatter().date(from: s)
             else {
                 throw DecodingError.dataCorrupted(.init(

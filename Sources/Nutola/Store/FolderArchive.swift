@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// File-backed folder storage:
 ///
@@ -9,17 +10,17 @@ final class FolderArchive: @unchecked Sendable {
     let root: URL
 
     private let queue = DispatchQueue(label: "io.github.d4rk413x21.Nutola.folders")
-    private static let dateFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
+    private static let dateFormatter = Mutex<ISO8601DateFormatter>({
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }())
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         e.dateEncodingStrategy = .custom { date, enc in
             var c = enc.singleValueContainer()
-            try c.encode(FolderArchive.dateFormatter.string(from: date))
+            try c.encode(FolderArchive.dateFormatter.withLock { $0.string(from: date) })
         }
         return e
     }()
@@ -27,7 +28,7 @@ final class FolderArchive: @unchecked Sendable {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .custom { dec in
             let s = try dec.singleValueContainer().decode(String.self)
-            guard let date = FolderArchive.dateFormatter.date(from: s)
+            guard let date = FolderArchive.dateFormatter.withLock({ $0.date(from: s) })
                 ?? ISO8601DateFormatter().date(from: s)
             else {
                 throw DecodingError.dataCorrupted(.init(
