@@ -5,7 +5,7 @@ import Foundation
 /// support.claude.com: claude://claude.ai/new?q=<url-encoded prompt> opens a
 /// NEW chat with the prompt PRE-FILLED — the user still reviews and hits send.
 /// There is no parameter to enable a connector, so the prompt text itself must
-/// name "nutola" and its tools (see ClaudeDesktopPrompt below).
+/// name "ayrvo" and its tools (see ClaudeDesktopPrompt below).
 enum ClaudeDesktop {
     /// The q value is truncated around 14,000 characters server-side. We never
     /// get close in practice — Claude fetches meeting content itself via MCP,
@@ -43,8 +43,8 @@ enum ClaudeDesktop {
     }
 }
 
-/// Builds the instruction text that steers Claude Desktop to Nutola's own
-/// "nutola" MCP connector — the deep link has no param for this, so the
+/// Builds the instruction text that steers Claude Desktop to Ayrvo's own
+/// "ayrvo" MCP connector — the deep link has no param for this, so the
 /// prompt has to say it explicitly, by name, every time.
 enum ClaudeDesktopPrompt {
     private static let defaultMeetingQuestion =
@@ -54,7 +54,7 @@ enum ClaudeDesktopPrompt {
 
     static func meeting(id: UUID, title: String, question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Claude has the nutola connector's tools available and can decide which to
+        // Claude has the ayrvo connector's tools available and can decide which to
         // call — naming the meeting + its id is enough to steer it.
         return """
         Answer a question about my Ayrvo meeting "\(title)" (id: \(id.uuidString)).
@@ -77,7 +77,7 @@ enum ClaudeDesktopPrompt {
     static func live(question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         let ask = q.isEmpty ? "What's being discussed, and is there anything I should add or ask?" : q
-        return "I'm in a Ayrvo meeting happening right now — \(ask)"
+        return "I'm in an Ayrvo meeting happening right now — \(ask)"
     }
 }
 

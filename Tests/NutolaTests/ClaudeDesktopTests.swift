@@ -74,8 +74,8 @@ struct ClaudeDesktopTests {
     }
 
     @Test func testLivePromptDefaultsAndCarriesQuestion() {
-        #expect(ClaudeDesktopPrompt.live(question: "") == "I'm in a Ayrvo meeting happening right now — What's being discussed, and is there anything I should add or ask?")
-        #expect(ClaudeDesktopPrompt.live(question: "Summarize the last 5 minutes") == "I'm in a Ayrvo meeting happening right now — Summarize the last 5 minutes")
+        #expect(ClaudeDesktopPrompt.live(question: "") == "I'm in an Ayrvo meeting happening right now — What's being discussed, and is there anything I should add or ask?")
+        #expect(ClaudeDesktopPrompt.live(question: "Summarize the last 5 minutes") == "I'm in an Ayrvo meeting happening right now — Summarize the last 5 minutes")
     }
 
     // MARK: - ClaudeCode (claude://code/new) deep links

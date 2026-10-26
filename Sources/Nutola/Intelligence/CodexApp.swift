@@ -55,7 +55,7 @@ enum CodexPrompt {
     static func live(question: String) -> String {
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         let ask = q.isEmpty ? "What's being discussed, and is there anything I should add or ask?" : q
-        return "I'm in a Ayrvo meeting happening right now — use $ayrvo for the live transcript. \(ask)"
+        return "I'm in an Ayrvo meeting happening right now — use $ayrvo for the live transcript. \(ask)"
     }
 }
 
