@@ -14,8 +14,8 @@ make test
 make app
 ```
 
-The application product is `Ayrvo`; the existing Swift source and test modules are
-named `Nutola` and `NutolaTests`.
+The application product and Swift source module are `Ayrvo`; tests use
+`AyrvoTests`. Sources live in `Sources/Ayrvo/`, tests in `Tests/AyrvoTests/`.
 
 ## Changes and pull requests
 
