@@ -91,7 +91,7 @@ final class GoogleMeetSpeakerTracker: PlatformSpeakerTracker {
 
     func start() {
         guard AccessibilityPermission.isTrusted else {
-            state.withLock { $0.status = "Optional: enable Nutola in Accessibility settings to identify meeting speakers." }
+            state.withLock { $0.status = "Optional: enable Ayrvo in Accessibility settings to identify meeting speakers." }
             return
         }
         state.withLock { state in

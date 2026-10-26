@@ -1,4 +1,4 @@
-APP_NAME   := Nutola
+APP_NAME   := Ayrvo
 BUNDLE_ID  := $(shell /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' packaging/Info.plist)
 DIST       := dist
 APP        := $(DIST)/$(APP_NAME).app
@@ -44,9 +44,7 @@ app: build
 	cp Resources/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
 	cp LICENSE "$(APP)/Contents/Resources/LICENSE"
 	@# SwiftPM resource bundle (menu bar icon) must ride along or Bundle.module lookups fail
-	@if [ -d ".build/release/$(APP_NAME)_$(APP_NAME).bundle" ]; then \
-		cp -R ".build/release/$(APP_NAME)_$(APP_NAME).bundle" "$(APP)/Contents/Resources/"; \
-	fi
+	cp -R ".build/release/$(APP_NAME)_Nutola.bundle" "$(APP)/Contents/Resources/"
 	@# RUNTIME_ARGS is empty for local dev (HARDENED=0) and adds -o runtime + entitlements
 	@# for the notarizable release build (HARDENED=1). All entitlements are
 	@# com.apple.security.* keys, honored ad-hoc with no provisioning profile.
@@ -76,7 +74,7 @@ nav-icon:
 	cp Resources/NavIcon.png Resources/NavIcon@2x.png Sources/Nutola/Resources/
 	rm -f Resources/NavIcon.png Resources/NavIcon@2x.png Resources/NavIcon-preview.png
 
-# Regenerate the app icon from Resources/AppIcon.svg: .icns and 1024 master.
+# Regenerate the app icon sizes and .icns from the approved Resources/AyrvoIcon.png.
 app-icon:
 	swift scripts/MakeIcon.swift Resources app
 	iconutil -c icns Resources/AppIcon.iconset -o Resources/AppIcon.icns

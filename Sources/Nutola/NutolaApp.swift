@@ -24,7 +24,7 @@ struct NutolaApp: App {
                 nextEvent: menuBarNextEvent)
         }
         .menuBarExtraStyle(.window)
-        Window("Nutola", id: "main") {
+        Window("Ayrvo", id: "main") {
             MainWindowView()
                 .modifier(PersistenceWarning())
                 .environmentObject(app)
@@ -36,7 +36,7 @@ struct NutolaApp: App {
         .restorationBehavior(.disabled)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Nutola") {
+                Button("About Ayrvo") {
                     NSApp.orderFrontStandardAboutPanel(options: [
                         .credits: NSAttributedString(
                             string: "Meeting notes and development tasks.\n\(AppIdentity.repositoryURL.absoluteString)",
@@ -46,7 +46,7 @@ struct NutolaApp: App {
             }
         }
 
-        Window("Welcome to Nutola", id: "onboarding") {
+        Window("Welcome to Ayrvo", id: "onboarding") {
             OnboardingView()
                 .environmentObject(app)
                 .nutolaAppearance()
@@ -229,8 +229,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if !FilePersistence.failures.isEmpty {
                 let alert = NSAlert()
                 alert.messageText = "Some changes have not been saved"
-                alert.informativeText = "Keep Nutola open and retry saving. Quitting now discards the file contents held in memory."
-                alert.addButton(withTitle: "Keep Nutola Open")
+                alert.informativeText = "Keep Ayrvo open and retry saving. Quitting now discards the file contents held in memory."
+                alert.addButton(withTitle: "Keep Ayrvo Open")
                 alert.addButton(withTitle: "Quit Without Saving")
                 guard alert.runModal() == .alertSecondButtonReturn else { return .terminateCancel }
                 discardUnsavedChanges = true
@@ -317,7 +317,7 @@ struct MenuBarLabel: View {
         // hand-assembled .app — it `fatalError`s at first menu-bar render and the app
         // can never relaunch. Look there ourselves before touching `Bundle.module`.
         let bundle: Bundle = {
-            let name = "Nutola_Nutola"
+            let name = "Ayrvo_Nutola"
             if let resourceURL = Bundle.main.resourceURL,
                let b = Bundle(url: resourceURL.appendingPathComponent("\(name).bundle"))
             { return b }

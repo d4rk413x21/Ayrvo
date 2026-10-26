@@ -536,7 +536,7 @@ struct MeetingDetailView: View {
             return "The transcript will appear here once the meeting starts."
         }
         if meeting.duration > 0 {
-            return "Nutola recorded this meeting but didn't capture speech. Check that microphone access is on."
+            return "Ayrvo recorded this meeting but didn't capture speech. Check that microphone access is on."
         }
         return "Record this meeting to capture a transcript."
     }
@@ -789,9 +789,9 @@ struct MeetingDetailView: View {
                 if meeting.duration > 0 {
                     let duration = TemplateRenderer.duration(meeting.duration)
                     if hasSideNotes {
-                        return "Nutola recorded \(duration) but didn't detect speech. Your notes are in My notes — resume recording if the call is still going."
+                        return "Ayrvo recorded \(duration) but didn't detect speech. Your notes are in My notes — resume recording if the call is still going."
                     }
-                    return "Nutola recorded \(duration) but didn't detect speech. Resume if the meeting is still live, or write notes manually."
+                    return "Ayrvo recorded \(duration) but didn't detect speech. Resume if the meeting is still live, or write notes manually."
                 }
                 if hasSideNotes {
                     return "Nothing was transcribed, but you have notes in My notes. Resume recording if the call is still going."
@@ -842,7 +842,7 @@ struct MeetingDetailView: View {
             tips.append("Use My notes to jot down what happened — they stay with this meeting.")
         }
         if meeting.displaySourceApp != nil {
-            tips.append("Make sure Nutola has microphone and system audio access in Settings.")
+            tips.append("Make sure Ayrvo has microphone and system audio access in Settings.")
         }
         return Array(tips.prefix(2))
     }
@@ -1004,7 +1004,7 @@ struct MeetingDetailView: View {
                 let (_, rendered) = try await GitHubGist.publish(
                     html: html,
                     filename: "meeting.html",
-                    description: "Nutola meeting notes — \(m.title)")
+                    description: "Ayrvo meeting notes — \(m.title)")
                 if var fresh = app.store.meeting(id: m.id) {
                     fresh.publishedURL = rendered.absoluteString
                     app.store.upsert(fresh)
@@ -1181,7 +1181,7 @@ struct MeetingDetailView: View {
             segments: app.store.transcript(for: meeting.id))
         let safeName = meeting.title.replacingOccurrences(of: "/", with: "-")
         let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Nutola — \(safeName).html")
+            .appendingPathComponent("Ayrvo — \(safeName).html")
         do {
             try FilePersistence.write(Data(html.utf8), to: file)
             NSWorkspace.shared.open(file)
@@ -1192,7 +1192,7 @@ struct MeetingDetailView: View {
 
     private func exportCSVAll() {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Nutola meetings.csv"
+        panel.nameFieldStringValue = "Ayrvo meetings.csv"
         panel.allowedContentTypes = [.plainText]
         guard panel.runModal() == .OK, let dest = panel.url else { return }
         let csv = CSVExporter.export(meetings: app.store.meetings)

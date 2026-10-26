@@ -2,9 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "Nutola",
+    name: "Ayrvo",
     defaultLocalization: "en",
     platforms: [.macOS(.v26)],
+    products: [
+        .executable(name: "Ayrvo", targets: ["Nutola"]),
+        .executable(name: "zoom-info", targets: ["zoom-info"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.17.7"),
     ],

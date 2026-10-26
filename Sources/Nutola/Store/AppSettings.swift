@@ -120,7 +120,7 @@ enum AskDeliveryMode: String, CaseIterable, Identifiable, Hashable {
 
     var detail: String {
         switch self {
-        case .cli: "Runs the CLI in the background and shows the answer in Nutola."
+        case .cli: "Runs the CLI in the background and shows the answer in Ayrvo."
         case .app: "Opens Claude Desktop or Codex with a pre-filled prompt."
         }
     }

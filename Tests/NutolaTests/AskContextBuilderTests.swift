@@ -32,7 +32,7 @@ final class AskContextBuilderTests {
         let prompt = ClaudeDesktopPrompt.library(question: "Summarize my meetings this week")
         let enriched = AskContextBuilder.enrichForCLI(prompt, archive: archive)
 
-        #expect(enriched.contains("Meeting data from Nutola"))
+        #expect(enriched.contains("Meeting data from Ayrvo"))
         #expect(enriched.contains("Roadmap sync"))
         #expect(enriched.contains("Decided to ship folders"))
         #expect(enriched != prompt)
@@ -72,7 +72,7 @@ final class AskContextBuilderTests {
         let prompt = ClaudeDesktopPrompt.library(question: "Summarize my meetings this week")
         let enriched = AskContextBuilder.enrichForAsk(prompt, archive: archive, limits: .onDevice)
 
-        #expect(enriched.contains("Meeting data from Nutola"))
+        #expect(enriched.contains("Meeting data from Ayrvo"))
         #expect(enriched.count <= AskContextBuilder.Limits.onDevice.maxTotalChars! + 32)
     }
 }

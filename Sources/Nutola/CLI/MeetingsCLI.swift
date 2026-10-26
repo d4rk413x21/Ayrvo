@@ -22,12 +22,12 @@ final class MeetingsCLI {
 
     static let usage = """
     Usage:
-      Nutola meetings list [--limit N] [--offset N]
-      Nutola meetings search <query> [--limit N] [--offset N]
-      Nutola meetings show <meeting-uuid>
-      Nutola meetings transcript <meeting-uuid>
-      Nutola meetings live [--minutes N]
-      Nutola meetings help
+      Ayrvo meetings list [--limit N] [--offset N]
+      Ayrvo meetings search <query> [--limit N] [--offset N]
+      Ayrvo meetings show <meeting-uuid>
+      Ayrvo meetings transcript <meeting-uuid>
+      Ayrvo meetings live [--minutes N]
+      Ayrvo meetings help
     """
 
     private let service: MeetingCommandService

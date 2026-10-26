@@ -36,7 +36,7 @@ enum Bootstrap {
         CrashDiagnosticLog.install()
         switch destination {
         case .version:
-            print("nutola \(version)")
+            print("ayrvo \(version)")
         case .mcp:
             MCPServer(archive: MeetingArchive(), templates: TemplateStore()).runBlocking()
         case .meetings(let arguments):

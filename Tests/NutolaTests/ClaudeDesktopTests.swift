@@ -50,7 +50,7 @@ struct ClaudeDesktopTests {
     @Test func testMeetingPromptCarriesTitleIdAndQuestion() {
         let id = UUID()
         let prompt = ClaudeDesktopPrompt.meeting(id: id, title: "Roadmap sync", question: "What did we decide?")
-        #expect(prompt.contains("Nutola meeting"))
+        #expect(prompt.contains("Ayrvo meeting"))
         #expect(prompt.contains("Roadmap sync"))
         #expect(prompt.contains(id.uuidString))
         #expect(prompt.contains("What did we decide?"))
@@ -64,7 +64,7 @@ struct ClaudeDesktopTests {
 
     @Test func testLibraryPromptCarriesQuestion() {
         let prompt = ClaudeDesktopPrompt.library(question: "When did I last talk about hiring?")
-        #expect(prompt.contains("Nutola meetings"))
+        #expect(prompt.contains("Ayrvo meetings"))
         #expect(prompt.contains("When did I last talk about hiring?"))
     }
 
@@ -74,8 +74,8 @@ struct ClaudeDesktopTests {
     }
 
     @Test func testLivePromptDefaultsAndCarriesQuestion() {
-        #expect(ClaudeDesktopPrompt.live(question: "") == "I'm in a Nutola meeting happening right now — What's being discussed, and is there anything I should add or ask?")
-        #expect(ClaudeDesktopPrompt.live(question: "Summarize the last 5 minutes") == "I'm in a Nutola meeting happening right now — Summarize the last 5 minutes")
+        #expect(ClaudeDesktopPrompt.live(question: "") == "I'm in an Ayrvo meeting happening right now — What's being discussed, and is there anything I should add or ask?")
+        #expect(ClaudeDesktopPrompt.live(question: "Summarize the last 5 minutes") == "I'm in an Ayrvo meeting happening right now — Summarize the last 5 minutes")
     }
 
     // MARK: - ClaudeCode (claude://code/new) deep links

@@ -10,7 +10,7 @@ enum SystemAudioPermission {
 
     static func guidance(previouslyCaptured: Bool) -> String {
         let history = previouslyCaptured ? "Call audio was captured in a previous recording. " : ""
-        return history + "macOS does not expose the current permission status. Request access, then check Nutola in System Settings if call audio is missing."
+        return history + "macOS does not expose the current permission status. Request access, then check Ayrvo in System Settings if call audio is missing."
     }
 
     @MainActor

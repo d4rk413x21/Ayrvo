@@ -48,8 +48,11 @@ final class AppIdentityTests {
         let plist = try #require(PropertyListSerialization.propertyList(
             from: Data(contentsOf: root.appending(path: "packaging/Info.plist")), format: nil) as? [String: Any])
         #expect(plist["CFBundleIdentifier"] as? String == AppIdentity.bundleIdentifier)
-        #expect(plist["CFBundleExecutable"] as? String == "Nutola")
-        #expect(AppIdentity.repositoryURL.absoluteString == "https://github.com/d4rk413x21/Nutola")
-        #expect(AppVersion.changelogURL.absoluteString == "https://github.com/d4rk413x21/Nutola/blob/main/CHANGELOG.md")
+        #expect(AppIdentity.bundleIdentifier == "io.github.d4rk413x21.Nutola")
+        #expect(plist["CFBundleName"] as? String == "Ayrvo")
+        #expect(plist["CFBundleDisplayName"] as? String == "Ayrvo")
+        #expect(plist["CFBundleExecutable"] as? String == "Ayrvo")
+        #expect(AppIdentity.repositoryURL.absoluteString == "https://github.com/d4rk413x21/Ayrvo")
+        #expect(AppVersion.changelogURL.absoluteString == "https://github.com/d4rk413x21/Ayrvo/blob/main/CHANGELOG.md")
     }
 }

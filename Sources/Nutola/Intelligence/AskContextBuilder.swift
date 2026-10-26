@@ -104,7 +104,7 @@ enum AskContextBuilder {
 
         ---
 
-        Meeting data from Nutola (already loaded below — answer immediately from this; do not say you will look up, fetch, or call tools):
+        Meeting data from Ayrvo (already loaded below — answer immediately from this; do not say you will look up, fetch, or call tools):
 
         """
         guard let maxChars else {

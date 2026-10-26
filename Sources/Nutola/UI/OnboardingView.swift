@@ -22,8 +22,9 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 6) {
-                NutolaStripes()
-                Text("Welcome to Nutola").font(.nutola(20, .bold))
+                AyrvoMark()
+                    .accessibilityHidden(true)
+                Text("Welcome to Ayrvo").font(.nutola(20, .bold))
                     .foregroundStyle(Theme.heading(scheme))
                 Text("A quick, optional setup — you can change any of this later in Settings.")
                     .font(.nutola(12)).foregroundStyle(.secondary)
@@ -137,11 +138,11 @@ struct OnboardingView: View {
             title: "Accessibility",
             required: false,
             detail: accessibilityTrusted
-                ? "Allowed — Nutola can read Zoom speakers and Google Meet captions in Chrome to label who said what."
+                ? "Allowed — Ayrvo can read Zoom speakers and Google Meet captions in Chrome to label who said what."
                 : "Labels Zoom speakers and Google Meet captions in Chrome by name.",
             learnMore: accessibilityTrusted
                 ? nil
-                : "Click Grant, then enable Nutola under Privacy & Security → Accessibility.",
+                : "Click Grant, then enable Ayrvo under Privacy & Security → Accessibility.",
             ok: accessibilityTrusted
         ) {
             if !accessibilityTrusted {
@@ -149,7 +150,7 @@ struct OnboardingView: View {
                     AccessibilityPermission.request()
                 }
                 .controlSize(.small)
-                .accessibilityHint("Opens System Settings to enable Nutola in Accessibility")
+                .accessibilityHint("Opens System Settings to enable Ayrvo in Accessibility")
             }
         }
     }
@@ -159,10 +160,10 @@ struct OnboardingView: View {
         return OnboardingStepRow(
             icon: "bell.badge.fill", title: "Notifications", required: false,
             detail: status == .denied
-                ? "Denied — Nutola can't tell you when your notes are ready. Turn it on in System Settings → Notifications → Nutola."
+                ? "Denied — Ayrvo can't tell you when your notes are ready. Turn it on in System Settings → Notifications → Ayrvo."
                 : status == .authorized
-                    ? "On — Nutola will let you know when your meeting notes are ready."
-                    : "Lets Nutola notify you when a recording finishes processing and your notes are ready.",
+                    ? "On — Ayrvo will let you know when your meeting notes are ready."
+                    : "Lets Ayrvo notify you when a recording finishes processing and your notes are ready.",
             ok: status == .authorized ? true : (status == .denied ? false : nil)
         ) {
             if status == .notDetermined {
@@ -207,8 +208,8 @@ struct OnboardingView: View {
         OnboardingStepRow(
             icon: "message.badge.filled.fill", title: "Claude Desktop", required: false,
             detail: claudeDesktopInstalled
-                ? "Installed — Chat and \"Ask your meetings\" open here. Add the nutola connector in Settings → Connect Claude if you haven't."
-                : "Required for chat — Nutola's Chat and \"Ask your meetings\" screens open a pre-filled prompt in Claude Desktop.",
+                ? "Installed — Chat and \"Ask your meetings\" open here. Add the ayrvo connector in Settings → Intelligence if you haven't."
+                : "Required for chat — Ayrvo's Chat and \"Ask your meetings\" screens open a pre-filled prompt in Claude Desktop.",
             ok: claudeDesktopInstalled
         ) {
             if !claudeDesktopInstalled {

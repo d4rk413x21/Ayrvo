@@ -38,7 +38,7 @@ struct ComingUpView: View {
             if !AppSettings.useCalendar {
                 emptyCalendarCard("Turn on calendar matching in Settings to see your schedule.")
             } else if CalendarAuthorization.isDenied {
-                emptyCalendarCard("Calendar access was denied. Open Settings to allow Nutola to read your schedule.") {
+                emptyCalendarCard("Calendar access was denied. Open Settings to allow Ayrvo to read your schedule.") {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")!)
                 }
             } else if !CalendarAuthorization.isAuthorized {

@@ -9,15 +9,15 @@
 		<string>en</string>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>Nutola</string>
+	<string>Ayrvo</string>
 	<key>CFBundleIdentifier</key>
 	<string>io.github.d4rk413x21.Nutola</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Nutola</string>
+	<string>Ayrvo</string>
 	<key>CFBundleDisplayName</key>
-	<string>Nutola</string>
+	<string>Ayrvo</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -35,12 +35,12 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Nutola records your side of meetings for transcription. Notes and task analysis use the AI provider you choose.</string>
+	<string>Ayrvo records your side of meetings for transcription. Notes and task analysis use the AI provider you choose.</string>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Nutola records the other participants' audio during meetings so both sides of the conversation appear in your transcript.</string>
+	<string>Ayrvo records the other participants' audio during meetings so both sides of the conversation appear in your transcript.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Nutola matches recordings to your calendar to name meetings and suggest attendee names. Optional.</string>
+	<string>Ayrvo matches recordings to your calendar to name meetings and suggest attendee names. Optional.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>Nutola adds the action items you choose to Apple Reminders. Optional.</string>
+	<string>Ayrvo adds the action items you choose to Apple Reminders. Optional.</string>
 </dict>
 </plist>

@@ -410,7 +410,7 @@ final class MicRecorder: @unchecked Sendable {
                     self.lock.unlock()
                     if stillEmpty {
                         NutolaConsoleLog.recording(
-                            "mic WARNING — still no buffers after restart. TCC may be blocking mic access. Try: System Settings → Privacy & Security → Microphone → toggle Nutola OFF then ON")
+                            "mic WARNING — still no buffers after restart. TCC may be blocking mic access. Try: System Settings → Privacy & Security → Microphone → toggle Ayrvo OFF then ON")
                     }
                 }
             }

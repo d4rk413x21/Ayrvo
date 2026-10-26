@@ -123,7 +123,7 @@ struct HTMLExporterTests {
     @Test func testGeneratorMetaPresentOnceBeforeTitle() {
         let m = Meeting(title: "Solo", createdAt: Date())
         let html = HTMLExporter.html(meeting: m, summaryMarkdown: "", segments: [])
-        let marker = "<meta name=\"generator\" content=\"nutola/1\">"
+        let marker = "<meta name=\"generator\" content=\"ayrvo/1\">"
         #expect(html.components(separatedBy: marker).count - 1 == 1)
         guard let markerRange = html.range(of: marker), let titleRange = html.range(of: "<title>") else {
             Issue.record("expected both generator meta and <title> in output")

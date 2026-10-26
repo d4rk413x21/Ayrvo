@@ -58,7 +58,7 @@ enum AIAsk {
     static func answer(prompt: String, onDelta: (@Sendable (String) -> Void)? = nil) async throws -> String {
         NutolaConsoleLog.ask("answer via \(provider.displayName) mode=\(deliveryMode.displayName) prompt=\(prompt.count) chars")
         let systemPrompt =
-            "You are Nutola. Meeting data is appended below — answer immediately from it. "
+            "You are Ayrvo. Meeting data is appended below — answer immediately from it. "
             + "Never say you will look up, fetch, or call tools. Be concise."
         let result: String
         switch provider {

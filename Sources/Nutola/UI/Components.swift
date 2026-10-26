@@ -599,25 +599,14 @@ struct MeetingHistoryRow: View {
     }
 }
 
-/// The layered-glass motif used in empty states.
-struct NutolaStripes: View {
+struct AyrvoMark: View {
+    var size: CGFloat = 56
+
     var body: some View {
-        VStack(spacing: 0) {
-            Rectangle().fill(Theme.cream)
-            Rectangle().fill(Theme.honey)
-            Rectangle().fill(Theme.raspberry)
-            Rectangle().fill(Theme.blueberry)
-        }
-        .frame(width: 44, height: 56)
-        .clipShape(UnevenRoundedRectangle(
-            topLeadingRadius: 8, bottomLeadingRadius: 18,
-            bottomTrailingRadius: 18, topTrailingRadius: 8))
-        .overlay(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 8, bottomLeadingRadius: 18,
-                bottomTrailingRadius: 18, topTrailingRadius: 8)
-            .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        )
+        Image(nsImage: NSApplication.shared.applicationIconImage)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
     }
 }
 
@@ -635,7 +624,8 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            NutolaStripes()
+            AyrvoMark()
+                .accessibilityHidden(true)
             Text(title).font(.nutola(17, .semibold))
                 .foregroundStyle(Theme.heading(scheme))
             Text(message)

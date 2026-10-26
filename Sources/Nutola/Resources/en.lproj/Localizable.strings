@@ -28,7 +28,7 @@
 
 "Speech recognition" = "Speech recognition";
 "Transcription engine" = "Transcription engine";
-"This engine isn't wired up yet — Nutola transcribes with Apple Speech until it ships. You can't download or select it today." = "This engine isn't wired up yet — Nutola transcribes with Apple Speech until it ships. You can't download or select it today.";
+"This engine isn't wired up yet — Ayrvo transcribes with Apple Speech until it ships. You can't download or select it today." = "This engine isn't wired up yet — Ayrvo transcribes with Apple Speech until it ships. You can't download or select it today.";
 "Mode: live during meetings" = "Mode: live during meetings";
 "Mode: batch after recording" = "Mode: batch after recording";
 "Apple Speech" = "Apple Speech";
@@ -38,4 +38,4 @@
 "Developer mode" = "Developer mode";
 "Shows a Debug tab with diagnostics and experimental options." = "Shows a Debug tab with diagnostics and experimental options.";
 "Save a crash diagnostic on crash" = "Save a crash diagnostic on crash";
-"When Nutola crashes, writes a small scrubbed record (version, OS, signal, and the in-flight meeting's title and state — never audio, transcript, or notes) to ~/Library/Application Support/Nutola/diagnostics.json so you can attach it to a bug report. Off by default." = "When Nutola crashes, writes a small scrubbed record (version, OS, signal, and the in-flight meeting's title and state — never audio, transcript, or notes) to ~/Library/Application Support/Nutola/diagnostics.json so you can attach it to a bug report. Off by default.";
+"When Ayrvo crashes, writes a small scrubbed record (version, OS, signal, and the in-flight meeting's title and state — never audio, transcript, or notes) to ~/Library/Application Support/Nutola/diagnostics.json so you can attach it to a bug report. Off by default." = "When Ayrvo crashes, writes a small scrubbed record (version, OS, signal, and the in-flight meeting's title and state — never audio, transcript, or notes) to ~/Library/Application Support/Nutola/diagnostics.json so you can attach it to a bug report. Off by default.";

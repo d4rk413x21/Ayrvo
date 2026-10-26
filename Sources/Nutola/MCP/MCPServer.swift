@@ -3,7 +3,7 @@ import Foundation
 /// A minimal MCP (Model Context Protocol) stdio server exposing the meeting archive
 /// to Claude. JSON-RPC 2.0, one message per line on stdin/stdout, logs to stderr.
 ///
-///     claude mcp add nutola -- /Applications/Nutola.app/Contents/MacOS/Nutola --mcp
+///     claude mcp add ayrvo -- /Applications/Ayrvo.app/Contents/MacOS/Ayrvo --mcp
 final class MCPServer {
     /// Newest first. We echo the client's version when we support it (spec rule);
     /// otherwise we offer our latest and let the client decide.
@@ -20,7 +20,7 @@ final class MCPServer {
     }
 
     func runBlocking() {
-        FileHandle.standardError.write(Data("nutola mcp server ready (\(archive.root.path))\n".utf8))
+        FileHandle.standardError.write(Data("ayrvo mcp server ready (\(archive.root.path))\n".utf8))
         while let line = readLine(strippingNewline: true) {
             guard !line.isEmpty else { continue }
             if let response = handle(line: line) {
@@ -53,7 +53,7 @@ final class MCPServer {
             return encode(resultID: id!, result: [
                 "protocolVersion": version,
                 "capabilities": ["tools": [:] as [String: Any]],
-                "serverInfo": ["name": "nutola", "title": "Nutola", "version": Bootstrap.version],
+                "serverInfo": ["name": "ayrvo", "title": "Ayrvo", "version": Bootstrap.version],
             ])
         case "ping":
             return encode(resultID: id!, result: [:])
@@ -181,7 +181,7 @@ final class MCPServer {
         ],
         [
             "name": "list_templates",
-            "description": "List the user's summary templates by name, with each one's heading outline (## sections). Templates are the markdown skeletons Nutola fills in to summarize a meeting.",
+            "description": "List the user's summary templates by name, with each one's heading outline (## sections). Templates are the markdown skeletons Ayrvo fills in to summarize a meeting.",
             "inputSchema": [
                 "type": "object",
                 "properties": [:] as [String: Any],

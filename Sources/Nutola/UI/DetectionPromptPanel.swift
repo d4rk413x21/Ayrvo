@@ -694,13 +694,8 @@ private struct DetectionPromptView: View {
 
   private var takeNotesButtonLabel: some View {
     HStack(spacing: 9) {
-      NutolaStripes()
-        .scaleEffect(0.38)
-        .frame(width: 18, height: 24)
-        .padding(3)
-        .background(
-          Color(red: 0.78, green: 0.91, blue: 0.35),
-          in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+      AyrvoMark(size: 24)
+        .accessibilityHidden(true)
       Text("Take notes")
         .font(.nutola(13, .semibold))
         .foregroundStyle(Theme.heading(scheme))
@@ -734,9 +729,8 @@ private struct RecordingPillPanelView: View {
 
   private var pillHandle: some View {
     VStack(spacing: 14) {
-      NutolaStripes()
-        .scaleEffect(0.32)
-        .frame(width: 15, height: 19)
+      AyrvoMark(size: 19)
+        .accessibilityHidden(true)
       Group {
         if minimized {
           MeterBars(levels: session.micBarLevels, barCount: 3)
