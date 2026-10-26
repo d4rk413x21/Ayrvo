@@ -74,7 +74,7 @@ nav-icon:
 	cp Resources/NavIcon.png Resources/NavIcon@2x.png Sources/Nutola/Resources/
 	rm -f Resources/NavIcon.png Resources/NavIcon@2x.png Resources/NavIcon-preview.png
 
-# Regenerate the app icon from Resources/AppIcon.svg: .icns and 1024 master.
+# Regenerate the app icon sizes and .icns from the approved Resources/AyrvoIcon.png.
 app-icon:
 	swift scripts/MakeIcon.swift Resources app
 	iconutil -c icns Resources/AppIcon.iconset -o Resources/AppIcon.icns

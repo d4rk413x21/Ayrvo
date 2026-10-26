@@ -221,7 +221,7 @@ struct MenuBarView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            NutolaStripes().scaleEffect(0.45).frame(width: 20, height: 26)
+            AyrvoMark(size: 26)
                 .accessibilityLabel("Ayrvo")
                 .accessibilityValue(menuBarStateValue)
             Text("Ayrvo")

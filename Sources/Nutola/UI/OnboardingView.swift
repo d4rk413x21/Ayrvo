@@ -22,7 +22,8 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 6) {
-                NutolaStripes()
+                AyrvoMark()
+                    .accessibilityHidden(true)
                 Text("Welcome to Ayrvo").font(.nutola(20, .bold))
                     .foregroundStyle(Theme.heading(scheme))
                 Text("A quick, optional setup — you can change any of this later in Settings.")

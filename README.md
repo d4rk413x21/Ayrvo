@@ -1,5 +1,7 @@
 # Ayrvo
 
+<img src="Resources/AppIcon-1024.png" width="128" height="128" alt="Ayrvo app icon">
+
 [![CI](https://github.com/d4rk413x21/Ayrvo/actions/workflows/ci.yml/badge.svg)](https://github.com/d4rk413x21/Ayrvo/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
