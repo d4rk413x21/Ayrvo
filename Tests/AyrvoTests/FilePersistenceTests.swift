@@ -61,6 +61,117 @@ extension SharedStateTests {
         }
 
         @MainActor
+        @Test func testTitleDraftRetriesFailedSaveWithoutLosingOtherMetadata() throws {
+            let archive = MeetingArchive(root: root)
+            let meeting = Meeting(title: "Planning", createdAt: .now)
+            try archive.createFolder(for: meeting.id)
+            try archive.save(meeting)
+            let store = MeetingStore(archive: archive)
+            let file = archive.folder(for: meeting.id).appendingPathComponent("meeting.json")
+            try FileManager.default.removeItem(at: file)
+            try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+
+            func writeTitle(_ title: String) -> Bool {
+                guard var latest = store.meeting(id: meeting.id) else { return false }
+                latest.title = title
+                return store.upsertSafely(latest)
+            }
+
+            var draft = MeetingTitleDraft(meeting.title)
+            draft.text = "My title"
+            #expect(!draft.save(using: writeTitle))
+            #expect(store.meeting(id: meeting.id)?.title == "My title")
+            draft.update("My title", isEditing: false)
+            #expect(draft.hasChanges)
+
+            var updated = try #require(store.meeting(id: meeting.id))
+            updated.duration = 120
+            updated.attendees = ["Alice"]
+            #expect(!store.upsertSafely(updated))
+            #expect(!draft.save(using: writeTitle))
+            #expect(draft.hasChanges)
+
+            try FileManager.default.removeItem(at: file)
+            #expect(draft.save(using: writeTitle))
+            #expect(!draft.hasChanges)
+            #expect(FilePersistence.failure(at: file) == nil)
+            let saved = try #require(archive.meeting(id: meeting.id))
+            #expect(saved.title == "My title")
+            #expect(saved.duration == 120)
+            #expect(saved.attendees == ["Alice"])
+
+            var later = saved
+            later.title = "Renamed elsewhere"
+            #expect(store.upsertSafely(later))
+            #expect(draft.save(using: writeTitle))
+            #expect(archive.meeting(id: meeting.id)?.title == "Renamed elsewhere")
+        }
+
+        @MainActor
+        @Test func testDiscardFailedTitlePreservesOtherPendingMetadata() throws {
+            let archive = MeetingArchive(root: root)
+            let meeting = Meeting(title: "Planning", createdAt: .now)
+            try archive.createFolder(for: meeting.id)
+            try archive.save(meeting)
+            let store = MeetingStore(archive: archive)
+            let file = archive.folder(for: meeting.id).appendingPathComponent("meeting.json")
+            try FileManager.default.removeItem(at: file)
+            try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+            var draft = MeetingTitleDraft(meeting.title)
+            draft.text = "My title"
+            #expect(!draft.save { title in
+                var updated = meeting
+                updated.title = title
+                return store.upsertSafely(updated)
+            })
+
+            var latest = try #require(store.meeting(id: meeting.id))
+            latest.duration = 120
+            latest.attendees = ["Alice"]
+            #expect(!store.upsertSafely(latest))
+            draft.text = "A later unsaved edit"
+            draft.discard(currentTitle: latest.title, hasPendingWrite: FilePersistence.failure(at: file) != nil) {
+                latest.title = $0
+                store.upsert(latest)
+            }
+            #expect(!draft.hasChanges)
+            try FileManager.default.removeItem(at: file)
+            FilePersistence.retryAll()
+            #expect(FilePersistence.failure(at: file) == nil)
+            let saved = try #require(archive.meeting(id: meeting.id))
+            #expect(saved.title == "Planning")
+            #expect(saved.duration == 120)
+            #expect(saved.attendees == ["Alice"])
+        }
+
+        @MainActor
+        @Test func testSafeUpsertReportsDeletedMeetingWithoutResurrectingIt() throws {
+            let archive = MeetingArchive(root: root)
+            let meeting = Meeting(title: "Planning", createdAt: .now)
+            try archive.createFolder(for: meeting.id)
+            try archive.save(meeting)
+            let store = MeetingStore(archive: archive)
+            try archive.delete(id: meeting.id)
+            #expect(!store.upsertSafely(meeting))
+            #expect(store.meeting(id: meeting.id) == nil)
+            #expect(!FileManager.default.fileExists(atPath: archive.folder(for: meeting.id).path))
+        }
+
+        @MainActor
+        @Test func testSafeUpsertReportsEncodingFailureWithoutAPendingFileWrite() throws {
+            let archive = MeetingArchive(root: root)
+            var meeting = Meeting(title: "Planning", createdAt: .now)
+            try archive.createFolder(for: meeting.id)
+            try archive.save(meeting)
+            let store = MeetingStore(archive: archive)
+            meeting.duration = .infinity
+            #expect(!store.upsertSafely(meeting))
+            let file = archive.folder(for: meeting.id).appendingPathComponent("meeting.json")
+            #expect(FilePersistence.failure(at: file) == nil)
+            #expect(archive.meeting(id: meeting.id)?.duration == 0)
+        }
+
+        @MainActor
         @Test func testSideNotesRetryDoesNotOverwriteLaterExternalChanges() throws {
             let archive = MeetingArchive(root: root)
             let meeting = Meeting(title: "Planning", createdAt: .now)

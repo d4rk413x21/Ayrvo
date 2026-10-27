@@ -8,7 +8,7 @@ struct MeetingDetailView: View {
     @FocusState private var isEditingTitle: Bool
     @State private var meeting: Meeting
     @State private var panelMode: GranolaPanelMode?
-    @State private var title: String
+    @State private var titleDraft: MeetingTitleDraft
     @State private var previewError: String?
     @State private var showDeleteConfirm = false
     @State private var notesDraft: String?
@@ -25,7 +25,7 @@ struct MeetingDetailView: View {
 
     init(meeting: Meeting, backTitle: String? = nil, onBack: (() -> Void)? = nil) {
         _meeting = State(initialValue: meeting)
-        _title = State(initialValue: meeting.title)
+        _titleDraft = State(initialValue: MeetingTitleDraft(meeting.title))
         self.backTitle = backTitle
         self.onBack = onBack
     }
@@ -69,7 +69,7 @@ struct MeetingDetailView: View {
             guard saveNotesEdits() else { return false }
             return saveTitle()
         }, discard: {
-            title = meeting.title
+            discardTitleEdits()
             discardNotesEdits()
         })
         .onAppear {
@@ -83,7 +83,7 @@ struct MeetingDetailView: View {
         .onChange(of: app.store.meetings) {
             if let fresh = app.store.meetings.first(where: { $0.id == meeting.id }) {
                 meeting = fresh
-                if !isEditingTitle { title = fresh.title }
+                titleDraft.update(fresh.title, isEditing: isEditingTitle)
             }
         }
         .onChange(of: app.session?.meetingID) { _, id in
@@ -126,7 +126,7 @@ struct MeetingDetailView: View {
     }
 
     private var hasUnsavedEdits: Bool {
-        if title.trimmingCharacters(in: .whitespacesAndNewlines) != meeting.title { return true }
+        if titleDraft.hasChanges { return true }
         guard let draft = notesDraft else { return false }
         let file = app.store.archive.folder(for: meeting.id).appendingPathComponent("summary.md")
         return draft != summary || FilePersistence.failure(at: file)?.data == Data(draft.utf8)
@@ -203,7 +203,7 @@ struct MeetingDetailView: View {
                 VStack(spacing: 20) {
                     MeetingDocumentHeader(
                         meeting: meeting,
-                        title: $title,
+                        title: $titleDraft.text,
                         titleFocus: $isEditingTitle,
                         showSideNotes: $showSideNotes,
                         hasSideNotes: hasSideNotes,
@@ -382,17 +382,28 @@ struct MeetingDetailView: View {
 
     @discardableResult
     private func saveTitle() -> Bool {
-        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard t != meeting.title else { return true }
-        guard !t.isEmpty else {
+        guard titleDraft.hasChanges else {
+            titleDraft.update(meeting.title, isEditing: isEditingTitle)
+            return true
+        }
+        guard !titleDraft.normalizedText.isEmpty else {
             PersistenceStatus.shared.operationError = "A meeting needs a title."
             return false
         }
-        guard var m = app.store.meeting(id: meeting.id) else { return false }
-        m.title = t
-        app.store.upsert(m)
-        return FilePersistence.failure(at: app.store.archive.folder(for: m.id)
-            .appendingPathComponent("meeting.json")) == nil
+        return titleDraft.save { title in
+            guard var m = app.store.meeting(id: meeting.id) else { return false }
+            m.title = title
+            return app.store.upsertSafely(m)
+        }
+    }
+
+    private func discardTitleEdits() {
+        guard var latest = app.store.meeting(id: meeting.id) else { return }
+        let file = app.store.archive.folder(for: meeting.id).appendingPathComponent("meeting.json")
+        titleDraft.discard(currentTitle: latest.title, hasPendingWrite: FilePersistence.failure(at: file) != nil) {
+            latest.title = $0
+            app.store.upsert(latest)
+        }
     }
 
     private func copyTranscript() {
