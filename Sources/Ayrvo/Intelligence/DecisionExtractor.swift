@@ -2,7 +2,7 @@ import Foundation
 
 /// A decision explicitly made during a meeting, extracted from the transcript.
 struct Decision: Identifiable, Equatable, Sendable {
-    let id: UUID = UUID()
+    let id: UUID
     /// The full segment text that contained the decision phrase.
     let quote: String
     let speakerID: String
@@ -54,6 +54,7 @@ enum DecisionExtractor {
 
             let name = names[segment.speakerID] ?? segment.speakerID
             results.append(Decision(
+                id: segment.id,
                 quote: segment.text,
                 speakerID: segment.speakerID,
                 speakerName: name,

@@ -17,10 +17,8 @@ struct MeetingDetailView: View {
     @State private var sideNotes = ""
     @State private var showSideNotes = false
     @State private var sideNotesSaveTask: Task<Void, Never>?
-    @State private var decisionsExpanded = true
     @State private var showShareNotes = false
     @State private var showDevelopmentTasks = false
-    @State private var copiedShareNotes = false
     @AppStorage(SettingsKey.sideNotesPanelWidth) private var sideNotesWidth = 280.0
 
     var backTitle: String?
@@ -132,7 +130,7 @@ struct MeetingDetailView: View {
             Text("This permanently removes the audio, transcript, and notes from your Mac.")
         }
         .sheet(isPresented: $showShareNotes) {
-            shareNotesSheet
+            MeetingShareNotesSheet(meeting: meeting, store: app.store)
         }
         .sheet(isPresented: $showDevelopmentTasks) {
             DevelopmentTasksSheet(meeting: meeting)
@@ -205,7 +203,11 @@ struct MeetingDetailView: View {
             Button("Share notes", systemImage: "square.and.arrow.up") { showShareNotes = true }
                 .labelStyle(.iconOnly)
                 .help("Share notes")
-            actionsMenu
+            MeetingActionsMenu(
+                meeting: meeting,
+                store: app.store,
+                previewError: $previewError,
+                onDelete: { showDeleteConfirm = true })
         }
     }
 
@@ -223,8 +225,15 @@ struct MeetingDetailView: View {
                 VStack(spacing: 20) {
                     documentHeader
                     notesSection
-                    decisionsSection
-                    transcriptSection
+                    MeetingDecisionsSection(
+                        segments: app.store.transcript(for: meeting.id),
+                        speakers: meeting.speakers,
+                        isRecording: isRecordingThisMeeting)
+                    MeetingTranscriptSection(
+                        hasTranscript: hasTranscript,
+                        isRecording: isRecordingThisMeeting,
+                        isPrep: isPrepMeeting,
+                        duration: meeting.duration)
                 }
                 .contentColumn()
                 .frame(minHeight: shouldCenterEmptyNotes ? geo.size.height : nil, alignment: .top)
@@ -423,106 +432,6 @@ struct MeetingDetailView: View {
             alignment: shouldCenterEmptyNotes ? .center : .leading)
     }
 
-    // MARK: - Decisions
-
-    /// Explicit decisions extracted from the transcript. Only rendered when the
-    /// meeting is not being recorded live (decisions surface once a transcript is
-    /// finalized) and at least one decision was found.
-    @ViewBuilder
-    private var decisionsSection: some View {
-        if !decisions.isEmpty, !isRecordingThisMeeting {
-            DisclosureGroup(isExpanded: $decisionsExpanded) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(decisions) { decision in
-                        decisionCard(decision)
-                    }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.mint(scheme))
-                    Text("Decisions")
-                        .font(.ayrvo(12, .semibold))
-                        .foregroundStyle(Theme.secondary(scheme))
-                    Text("\(decisions.count)")
-                        .font(.ayrvo(11, .semibold))
-                        .foregroundStyle(Theme.tertiary(scheme))
-                }
-            }
-        }
-    }
-
-    private var decisions: [Decision] {
-        DecisionExtractor.extract(
-            from: app.store.transcript(for: meeting.id),
-            speakers: meeting.speakers)
-    }
-
-    private func decisionCard(_ decision: Decision) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text(decision.speakerName)
-                    .font(.ayrvo(11, .semibold))
-                    .foregroundStyle(Theme.secondary(scheme))
-                Spacer(minLength: 0)
-                Text(MeetingArchive.timestamp(decision.timestamp))
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(Theme.tertiary(scheme))
-            }
-            Text(decision.quote)
-                .font(.ayrvo(13))
-                .foregroundStyle(Theme.heading(scheme))
-                .textSelection(.enabled)
-                .lineSpacing(3)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.card(scheme), in: RoundedRectangle(cornerRadius: 10))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(decision.speakerName) at \(MeetingArchive.timestamp(decision.timestamp)): \(decision.quote)")
-    }
-
-    // MARK: - Transcript
-
-    /// Inline transcript empty-state. When the meeting has no transcript yet (and
-    /// isn't being recorded live — the live transcript lives in the floating
-    /// panel), show a placeholder so the document isn't silent about the missing
-    /// transcript. When a transcript exists it's read via the floating Granola
-    /// panel, so nothing renders inline here.
-    @ViewBuilder
-    private var transcriptSection: some View {
-        if isRecordingThisMeeting || hasTranscript {
-            EmptyView()
-        } else {
-            VStack(spacing: 10) {
-                Image(systemName: "text.bubble")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(Theme.tertiary(scheme))
-                Text("No transcript yet")
-                    .font(.ayrvo(13, .semibold))
-                    .foregroundStyle(Theme.secondary(scheme))
-                Text(transcriptEmptyMessage)
-                    .font(.ayrvo(11))
-                    .foregroundStyle(Theme.tertiary(scheme))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 320)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-        }
-    }
-
-    private var transcriptEmptyMessage: String {
-        if isPrepMeeting {
-            return "The transcript will appear here once the meeting starts."
-        }
-        if meeting.duration > 0 {
-            return "Ayrvo recorded this meeting but didn't capture speech. Check that microphone access is on."
-        }
-        return "Record this meeting to capture a transcript."
-    }
-
     private var prepPlaceholder: some View {
         Text("Write notes")
             .font(.ayrvo(14))
@@ -596,32 +505,13 @@ struct MeetingDetailView: View {
     }
 
     private var notesEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // TODO(localization): "Cancel" and "Save" below (and "Edit notes" in
-            // notesEditMenu) are hardcoded English literals. SwiftPM has no
-            // Localizable.xcstrings, so they aren't localized yet. When
-            // localization lands, wrap them in LocalizedStringKey.
-            HStack {
-                Spacer()
-                Button("Cancel") {
-                    discardNotesEdits()
-                }
-                    .keyboardShortcut(.cancelAction)
-                Button("Save") {
-                    if let notesDraft, !app.store.saveSummarySafely(notesDraft, for: meeting.id) { return }
-                    notesDraft = nil
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(actionColor)
-                .keyboardShortcut("s", modifiers: .command)
-            }
-            .controlSize(.small)
-
-            TextEditor(text: Binding(get: { notesDraft ?? "" }, set: { notesDraft = $0 }))
-                .font(.system(size: 13, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 200)
-        }
+        MeetingNotesEditor(
+            text: Binding(get: { notesDraft ?? "" }, set: { notesDraft = $0 }),
+            onSave: {
+                if let notesDraft, !app.store.saveSummarySafely(notesDraft, for: meeting.id) { return }
+                notesDraft = nil
+            },
+            onCancel: discardNotesEdits)
     }
 
     @ViewBuilder
@@ -904,43 +794,6 @@ struct MeetingDetailView: View {
         return (event.joinLabel, url)
     }
 
-    private var actionsMenu: some View {
-        Menu {
-            Button("Copy notes") { copyNotes() }
-            Button("Preview in browser") { previewInBrowser() }
-            Divider()
-            Menu("Export…") {
-                Button("HTML…") { exportHTML() }
-                Button("PDF…") { exportPDF() }
-                Button("Markdown…") { exportMarkdown() }
-                Button("Subtitles (.srt)…") { exportSRT() }
-                Button("Subtitles (.vtt)…") { exportVTT() }
-                Divider()
-                Button("CSV (all meetings)…") { exportCSVAll() }
-                    .disabled(app.store.meetings.isEmpty)
-            }
-            FolderPickerMenu(
-                currentFolderID: meeting.folderID,
-                calendarTitle: meeting.calendarEventTitle ?? meeting.title,
-                meetingID: meeting.id
-            ) {
-                Text("Move to folder…")
-            }
-            Button("Show files in Finder") {
-                NSWorkspace.shared.activateFileViewerSelecting(
-                    [app.store.archive.folder(for: meeting.id)])
-            }
-            Divider()
-            Button("Move to trash", role: .destructive) { showDeleteConfirm = true }
-        } label: {
-            Label("More actions", systemImage: "ellipsis")
-        }
-        .menuStyle(.borderlessButton)
-        .labelStyle(.iconOnly)
-        .help("More actions")
-        .accessibilityLabel("More actions")
-    }
-
     @discardableResult
     private func saveTitle() -> Bool {
         let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -956,236 +809,11 @@ struct MeetingDetailView: View {
             .appendingPathComponent("meeting.json")) == nil
     }
 
-    private func copyNotes() {
-        let text = app.store.summary(for: meeting.id)
-        guard !text.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-    }
-
     private func copyTranscript() {
         let segments = app.store.transcript(for: meeting.id)
         guard !segments.isEmpty else { return }
         let text = TranscriptFormatter.plainText(segments, speakers: meeting.speakers)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    // MARK: - Share Notes
-
-    /// Copies the read-only notes HTML to the pasteboard or saves it locally.
-    private var shareNotesSheet: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Header
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.ayrvo(16, .medium))
-                        .foregroundStyle(actionColor)
-                    Text("Share Notes")
-                        .font(.ayrvo(18, .bold))
-                        .foregroundStyle(Theme.heading(scheme))
-                }
-                Text("A read-only page with the summary, action items, and transcript.")
-                    .font(.ayrvo(12))
-                    .foregroundStyle(Theme.secondary(scheme))
-            }
-
-            // Action buttons as cards
-            VStack(spacing: 10) {
-                shareActionCard(
-                    icon: "doc.on.doc",
-                    title: "Copy HTML",
-                    subtitle: "Copy to clipboard"
-                ) { copyShareNotesHTML() }
-
-                shareActionCard(
-                    icon: "square.and.arrow.down",
-                    title: "Save HTML",
-                    subtitle: "Save as a file"
-                ) { saveShareNotesHTML() }
-            }
-
-            // Status
-            if copiedShareNotes {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Theme.mint(scheme))
-                    Text("HTML copied to clipboard!")
-                        .font(.ayrvo(11, .medium))
-                        .foregroundStyle(Theme.mint(scheme))
-                    Spacer()
-                }
-                .padding(10)
-                .background(Theme.mint(scheme).opacity(0.08),
-                           in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
-
-            Spacer()
-            HStack {
-                Spacer()
-                Button("Done") { showShareNotes = false }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-            }
-        }
-        .padding(24)
-        .frame(width: 440, height: 360)
-        .onDisappear { copiedShareNotes = false }
-    }
-
-    private func shareActionCard(
-        icon: String,
-        title: String,
-        subtitle: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.ayrvo(18, .medium))
-                    .foregroundStyle(actionColor)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        actionColor.opacity(0.08),
-                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.ayrvo(13, .semibold))
-                        .foregroundStyle(Theme.heading(scheme))
-                    Text(subtitle)
-                        .font(.ayrvo(10))
-                        .foregroundStyle(Theme.tertiary(scheme))
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.ayrvo(10, .medium))
-                    .foregroundStyle(Theme.tertiary(scheme))
-            }
-            .padding(12)
-            .background(
-                Theme.card(scheme).opacity(0.7),
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func sharedNotesInputs() -> (Meeting, String, [TranscriptTurn], [ActionItem]) {
-        let m = meeting
-        let summary = app.store.summary(for: m.id)
-        let turns = TranscriptTurnBuilder.turns(from: app.store.transcript(for: m.id))
-        let items = ActionItemParser.parse(summary)
-        return (m, summary, turns, items)
-    }
-
-    private func copyShareNotesHTML() {
-        let (m, summary, turns, items) = sharedNotesInputs()
-        let html = SharedNotesExporter.exportHTML(
-            meeting: m, summary: summary, transcript: turns, actionItems: items)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(html, forType: .string)
-        copiedShareNotes = true
-    }
-
-    private func saveShareNotesHTML() {
-        let (m, summary, turns, items) = sharedNotesInputs()
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = safeFilename + ".html"
-        panel.allowedContentTypes = [.html]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        let html = SharedNotesExporter.exportHTML(
-            meeting: m, summary: summary, transcript: turns, actionItems: items)
-        try? FilePersistence.write(Data(html.utf8), to: dest)
-    }
-
-    private func previewInBrowser() {
-        previewError = nil
-        let html = HTMLExporter.html(
-            meeting: meeting,
-            summaryMarkdown: app.store.summary(for: meeting.id),
-            segments: app.store.transcript(for: meeting.id))
-        let safeName = meeting.title.replacingOccurrences(of: "/", with: "-")
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Ayrvo — \(safeName).html")
-        do {
-            try FilePersistence.write(Data(html.utf8), to: file)
-            NSWorkspace.shared.open(file)
-        } catch {
-            previewError = error.localizedDescription
-        }
-    }
-
-    private func exportCSVAll() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Ayrvo meetings.csv"
-        panel.allowedContentTypes = [.plainText]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        let csv = CSVExporter.export(meetings: app.store.meetings)
-        try? FilePersistence.write(Data(csv.utf8), to: dest)
-    }
-
-    private func exportHTML() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = safeFilename + ".html"
-        panel.allowedContentTypes = [.html]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        let html = HTMLExporter.html(
-            meeting: meeting,
-            summaryMarkdown: app.store.summary(for: meeting.id),
-            segments: app.store.transcript(for: meeting.id))
-        try? FilePersistence.write(Data(html.utf8), to: dest)
-    }
-
-    private func exportMarkdown() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = safeFilename + ".md"
-        panel.allowedContentTypes = [.plainText]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        let md = TranscriptFormatter.markdown(
-            app.store.transcript(for: meeting.id),
-            speakers: meeting.speakers)
-        try? FilePersistence.write(Data(md.utf8), to: dest)
-    }
-
-    private func exportSRT() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = safeFilename + ".srt"
-        panel.allowedContentTypes = [.plainText]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        let srt = TranscriptFormatter.srt(
-            app.store.transcript(for: meeting.id),
-            speakers: meeting.speakers)
-        try? FilePersistence.write(Data(srt.utf8), to: dest)
-    }
-
-    private func exportVTT() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = safeFilename + ".vtt"
-        panel.allowedContentTypes = [.plainText]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        let vtt = TranscriptFormatter.vtt(
-            app.store.transcript(for: meeting.id),
-            speakers: meeting.speakers)
-        try? FilePersistence.write(Data(vtt.utf8), to: dest)
-    }
-
-    private func exportPDF() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = safeFilename + ".pdf"
-        panel.allowedContentTypes = [.pdf]
-        guard panel.runModal() == .OK, let dest = panel.url else { return }
-        do {
-            try PDFExporter.exportPDF(
-                meeting: meeting,
-                summaryMarkdown: app.store.summary(for: meeting.id),
-                segments: app.store.transcript(for: meeting.id),
-                to: dest)
-        } catch { PersistenceStatus.shared.report(error) }
-    }
-
-    private var safeFilename: String {
-        meeting.title.replacingOccurrences(of: "/", with: "-")
     }
 }

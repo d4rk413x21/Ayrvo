@@ -16,6 +16,13 @@ by `make app`. To cut a release:
 
 ## [Unreleased]
 
+### Changed
+- Separate meeting editing, sharing, exports, and transcript/decision sections
+  into focused SwiftUI views; organize settings sections in dedicated files.
+
+### Fixed
+- Keep decision row identity stable when a transcript is re-evaluated or a speaker is renamed.
+
 ## [0.0.2] - 2026-07-29
 
 ### Fixed
