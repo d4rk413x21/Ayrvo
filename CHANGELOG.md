@@ -17,11 +17,13 @@ by `make app`. To cut a release:
 ## [Unreleased]
 
 ### Changed
-- Separate meeting editing, sharing, exports, and transcript/decision sections
+- Separate meeting headers, note presentation/editing, sharing, exports, and transcript/decision sections
   into focused SwiftUI views; organize settings sections in dedicated files.
 
 ### Fixed
 - Keep decision row identity stable when a transcript is re-evaluated or a speaker is renamed.
+- Display meeting/preview notices in the document and keep Resume recording available
+  when no resume button is present in the footer.
 
 ## [0.0.2] - 2026-07-29
 
