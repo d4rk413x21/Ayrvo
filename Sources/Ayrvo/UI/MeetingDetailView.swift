@@ -13,7 +13,7 @@ struct MeetingDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var notesDraft: String?
     @State private var transcriptDraft: String?
-    @State private var sideNotes = ""
+    @State private var sideNotesDraft = MeetingSideNotesDraft()
     @State private var showSideNotes = false
     @State private var sideNotesSaveTask: Task<Void, Never>?
     @State private var showShareNotes = false
@@ -35,7 +35,7 @@ struct MeetingDetailView: View {
             HStack(alignment: .top, spacing: 0) {
                 if showSideNotes {
                     SideNotesPanel(
-                        text: $sideNotes,
+                        text: Binding(get: { sideNotes }, set: { sideNotesDraft.edit($0) }),
                         isRecording: isRecordingThisMeeting,
                         onTextChange: scheduleSideNotesSave)
                         .frame(width: sideNotesWidth)
@@ -56,38 +56,17 @@ struct MeetingDetailView: View {
         .toolbar { meetingToolbar }
         .safeAreaInset(edge: .bottom) {
             if showProminentJoinButton, let join = joinConference {
-                VStack(spacing: 8) {
-                    if canContinueRecording {
-                        HStack {
-                            Spacer()
-                            Button {
-                                Task { await app.continueRecording(meetingID: meeting.id) }
-                            } label: {
-                                Label("Resume recording", systemImage: "mic.fill")
-                                    .font(.ayrvo(11, .semibold))
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 5)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(Theme.mint(scheme))
-                            .clipShape(Capsule())
-                            Spacer()
-                        }
-                    }
-                    ConferenceJoinButton(label: join.label, url: join.url, prominent: true, calendarEvent: linkedCalendarEvent)
-                        .frame(maxWidth: 560)
-                }
-                .frame(maxWidth: 560)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 20)
+                MeetingRecordingFooter(
+                    label: join.label,
+                    url: join.url,
+                    calendarEvent: linkedCalendarEvent,
+                    canResume: canContinueRecording,
+                    onResume: { Task { await app.continueRecording(meetingID: meeting.id) } })
             }
         }
         .task { await app.calendar.refreshAgenda() }
         .trackingEdits(isDirty: { hasUnsavedEdits }, save: {
-            if let draft = notesDraft {
-                guard app.store.saveSummarySafely(draft, for: meeting.id) else { return false }
-                notesDraft = nil
-            }
+            guard saveNotesEdits() else { return false }
             return saveTitle()
         }, discard: {
             title = meeting.title
@@ -97,17 +76,9 @@ struct MeetingDetailView: View {
             loadSideNotes()
             presentTranscriptIfNeeded()
         }
-        .onDisappear {
-            sideNotesSaveTask?.cancel()
-            if sideNotesSaveTask != nil, app.store.meeting(id: meeting.id) != nil {
-                app.store.saveSideNotes(sideNotes, for: meeting.id)
-            }
-        }
+        .onDisappear(perform: flushSideNotes)
         .onReceive(NotificationCenter.default.publisher(for: .ayrvoFlushEdits)) { _ in
-            sideNotesSaveTask?.cancel()
-            if sideNotesSaveTask != nil, app.store.meeting(id: meeting.id) != nil {
-                app.store.saveSideNotes(sideNotes, for: meeting.id)
-            }
+            flushSideNotes()
         }
         .onChange(of: app.store.meetings) {
             if let fresh = app.store.meetings.first(where: { $0.id == meeting.id }) {
@@ -143,12 +114,14 @@ struct MeetingDetailView: View {
         meeting.state == .prep && !isRecordingThisMeeting
     }
 
+    private var sideNotes: String { sideNotesDraft.text }
+
     private var hasSideNotes: Bool {
         !sideNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func loadSideNotes() {
-        sideNotes = app.store.sideNotes(for: meeting.id)
+        sideNotesDraft.load(app.store.sideNotes(for: meeting.id))
         showSideNotes = isRecordingThisMeeting || isPrepMeeting || hasSideNotes
     }
 
@@ -167,15 +140,30 @@ struct MeetingDetailView: View {
         notesDraft = nil
     }
 
+    @discardableResult
+    private func saveNotesEdits() -> Bool {
+        guard let draft = notesDraft else { return true }
+        guard app.store.saveSummarySafely(draft, for: meeting.id) else { return false }
+        notesDraft = nil
+        return true
+    }
+
     private func scheduleSideNotesSave() {
+        guard sideNotesDraft.needsFlush else { return }
         sideNotesSaveTask?.cancel()
-        let text = sideNotes
-        let id = meeting.id
         sideNotesSaveTask = Task {
             try? await Task.sleep(for: .milliseconds(450))
             guard !Task.isCancelled else { return }
-            app.store.saveSideNotes(text, for: id)
+            sideNotesSaveTask = nil
+            flushSideNotes()
         }
+    }
+
+    private func flushSideNotes() {
+        sideNotesSaveTask?.cancel()
+        sideNotesSaveTask = nil
+        guard app.store.meeting(id: meeting.id) != nil else { return }
+        sideNotesDraft.flush { app.store.saveSideNotes($0, for: meeting.id) }
     }
 
     // MARK: - Window toolbar
@@ -290,10 +278,7 @@ struct MeetingDetailView: View {
                 onResume: { Task { await app.continueRecording(meetingID: meeting.id) } },
                 onRetry: { Task { await app.retry(meetingID: meeting.id) } },
                 onShowTranscript: { panelMode = .transcript }),
-            onSave: {
-                if let notesDraft, !app.store.saveSummarySafely(notesDraft, for: meeting.id) { return }
-                notesDraft = nil
-            },
+            onSave: { saveNotesEdits() },
             onCancel: discardNotesEdits)
     }
 

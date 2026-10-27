@@ -60,6 +60,32 @@ extension SharedStateTests {
             #expect(FilePersistence.failures[file] == nil)
         }
 
+        @MainActor
+        @Test func testSideNotesRetryDoesNotOverwriteLaterExternalChanges() throws {
+            let archive = MeetingArchive(root: root)
+            let meeting = Meeting(title: "Planning", createdAt: .now)
+            try archive.createFolder(for: meeting.id)
+            try archive.save(meeting)
+            let store = MeetingStore(archive: archive)
+            let file = archive.folder(for: meeting.id).appendingPathComponent("notes.md")
+            try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+            var draft = MeetingSideNotesDraft()
+            draft.edit("Local notes")
+            draft.flush { store.saveSideNotes($0, for: meeting.id) }
+            #expect(!draft.needsFlush)
+            #expect(FilePersistence.failure(at: file)?.data == Data("Local notes".utf8))
+
+            draft.edit("Latest local notes")
+            draft.flush { store.saveSideNotes($0, for: meeting.id) }
+            try FileManager.default.removeItem(at: file)
+            FilePersistence.retryAll()
+            #expect(archive.sideNotes(for: meeting.id) == "Latest local notes")
+
+            try archive.saveSideNotes("Updated by another editor", for: meeting.id)
+            draft.flush { store.saveSideNotes($0, for: meeting.id) }
+            #expect(archive.sideNotes(for: meeting.id) == "Updated by another editor")
+        }
+
         @Test func testDeletingMeetingDiscardsItsPendingWrites() throws {
             let archive = MeetingArchive(root: root)
             let id = UUID()
