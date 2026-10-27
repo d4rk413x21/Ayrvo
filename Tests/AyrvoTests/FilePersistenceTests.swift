@@ -77,8 +77,11 @@ extension SharedStateTests {
 
             draft.edit("Latest local notes")
             draft.flush { store.saveSideNotes($0, for: meeting.id) }
+            #expect(FilePersistence.failure(at: file)?.data == Data("Latest local notes".utf8))
             try FileManager.default.removeItem(at: file)
             FilePersistence.retryAll()
+            #expect(FilePersistence.failure(at: file) == nil)
+            #expect(try String(contentsOf: file, encoding: .utf8) == "Latest local notes")
             #expect(archive.sideNotes(for: meeting.id) == "Latest local notes")
 
             try archive.saveSideNotes("Updated by another editor", for: meeting.id)
