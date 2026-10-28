@@ -79,7 +79,8 @@ extension SharedStateTests {
 
             var draft = MeetingTitleDraft(meeting.title)
             draft.text = "My title"
-            #expect(!draft.save(using: writeTitle))
+            let firstSave = draft.save(using: writeTitle)
+            #expect(!firstSave)
             #expect(store.meeting(id: meeting.id)?.title == "My title")
             draft.update("My title", isEditing: false)
             #expect(draft.hasChanges)
@@ -88,11 +89,13 @@ extension SharedStateTests {
             updated.duration = 120
             updated.attendees = ["Alice"]
             #expect(!store.upsertSafely(updated))
-            #expect(!draft.save(using: writeTitle))
+            let failedRetry = draft.save(using: writeTitle)
+            #expect(!failedRetry)
             #expect(draft.hasChanges)
 
             try FileManager.default.removeItem(at: file)
-            #expect(draft.save(using: writeTitle))
+            let recoveredSave = draft.save(using: writeTitle)
+            #expect(recoveredSave)
             #expect(!draft.hasChanges)
             #expect(FilePersistence.failure(at: file) == nil)
             let saved = try #require(archive.meeting(id: meeting.id))
@@ -103,7 +106,8 @@ extension SharedStateTests {
             var later = saved
             later.title = "Renamed elsewhere"
             #expect(store.upsertSafely(later))
-            #expect(draft.save(using: writeTitle))
+            let unchangedSave = draft.save(using: writeTitle)
+            #expect(unchangedSave)
             #expect(archive.meeting(id: meeting.id)?.title == "Renamed elsewhere")
         }
 
