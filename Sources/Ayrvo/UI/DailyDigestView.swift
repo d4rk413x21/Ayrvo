@@ -12,7 +12,6 @@ import AppKit
 struct DailyDigestView: View {
     @EnvironmentObject private var app: AppState
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.ayrvoActionColor) private var actionColor
 
     // Digest state
     @State private var digest: DailyDigest?

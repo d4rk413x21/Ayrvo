@@ -10,7 +10,6 @@ struct GranolaFloatingPanel: View {
   @EnvironmentObject private var app: AppState
   @Environment(\.colorScheme) private var scheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.ayrvoActionColor) private var actionColor
 
   let meeting: Meeting
   @Binding var mode: GranolaPanelMode?

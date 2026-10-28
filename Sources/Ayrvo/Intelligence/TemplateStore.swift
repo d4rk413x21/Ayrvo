@@ -20,11 +20,18 @@ final class TemplateStore: @unchecked Sendable {
     }
 
     func list() -> [SummaryTemplate] {
-        let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        let onDisk = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+        let pending = FilePersistence.failures.keys.filter {
+            $0.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path
+        }
+        let files = Set((onDisk + pending).map {
+            URL(fileURLWithPath: $0.standardizedFileURL.path, isDirectory: false)
+        })
         return files
             .filter { $0.pathExtension == "md" }
             .compactMap { url in
-                guard let body = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+                guard let data = try? FilePersistence.read(url),
+                      let body = String(data: data, encoding: .utf8) else { return nil }
                 return SummaryTemplate(name: url.deletingPathExtension().lastPathComponent, body: body)
             }
             .sorted { $0.name < $1.name }

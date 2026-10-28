@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import UserNotifications
+import os
 
 final class NotificationServiceImpl: NotificationService, @unchecked Sendable {
   private var onReadyTapped: (@Sendable (UUID) -> Void)?

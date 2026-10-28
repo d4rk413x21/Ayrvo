@@ -146,7 +146,7 @@ final class RecordingSession: ObservableObject {
   /// are active on other threads — this is the exact hang the file logger was
   /// added to diagnose. Prefer this from `@MainActor async` callers.
   func startAsync(micURL: URL, systemURL: URL, localeStore: TranscriptionLocaleStore? = nil) async throws {
-    MicRecorder.logAudioDeviceSnapshot(context: "session start")
+    AudioDeviceRouting.logAudioDeviceSnapshot(context: "session start")
     AyrvoConsoleLog.recording(
       "start meeting=\(meetingID.uuidString.prefix(8)) offset=\(Int(elapsedOffset))s source=\(sourceApp ?? "manual") accessibility=\(AccessibilityPermission.isTrusted)"
     )
@@ -158,7 +158,7 @@ final class RecordingSession: ObservableObject {
     // starting the recorders so no early audio is missed; it's best-effort —
     // any failure here never affects the recording itself.
     let live = LiveTranscriber(startDate: startedAt, timeOffset: elapsedOffset)
-    live.headphoneBleedMode = MicRecorder.headphoneBleedLikely
+    live.headphoneBleedMode = AudioDeviceRouting.headphoneBleedLikely
     live.localeOverride = transcriptionLocale
     if live.headphoneBleedMode {
       AyrvoConsoleLog.recording("headphone bleed mode — mic bleed will attribute to Others")
@@ -246,7 +246,7 @@ final class RecordingSession: ObservableObject {
   /// blocking CoreAudio setup on the calling thread; do NOT call from the main
   /// thread in production (use `startAsync` instead to avoid the HAL deadlock).
   private func startSync(micURL: URL, systemURL: URL, localeStore: TranscriptionLocaleStore?) throws {
-    MicRecorder.logAudioDeviceSnapshot(context: "session start")
+    AudioDeviceRouting.logAudioDeviceSnapshot(context: "session start")
     AyrvoConsoleLog.recording(
       "start meeting=\(meetingID.uuidString.prefix(8)) offset=\(Int(elapsedOffset))s source=\(sourceApp ?? "manual") accessibility=\(AccessibilityPermission.isTrusted)"
     )
@@ -259,7 +259,7 @@ final class RecordingSession: ObservableObject {
     // starting the recorders so no early audio is missed; it's best-effort —
     // any failure here never affects the recording itself.
     let live = LiveTranscriber(startDate: startedAt, timeOffset: elapsedOffset)
-    live.headphoneBleedMode = MicRecorder.headphoneBleedLikely
+    live.headphoneBleedMode = AudioDeviceRouting.headphoneBleedLikely
     live.localeOverride = transcriptionLocale
     if live.headphoneBleedMode {
       AyrvoConsoleLog.recording("headphone bleed mode — mic bleed will attribute to Others")
@@ -463,7 +463,7 @@ final class RecordingSession: ObservableObject {
     switch (micStarted, systemStarted) {
     case (true, true): break
     case (false, true):
-      if MicRecorder.defaultInputIsBluetooth {
+      if AudioDeviceRouting.defaultInputIsBluetooth {
         // The built-in mic fallback should have caught this, but if it
         // also failed (no built-in mic, or TCC blocked), the mic side
         // is lost. The message is source-agnostic now — Chrome/Meet and
