@@ -31,6 +31,7 @@ enum MeetingSpeakerResolver {
         onProgress: @escaping @Sendable (String) -> Void
     ) async -> Result {
         let id = meeting.id
+        let micURL = archive.micURL(for: id)
         let systemURL = archive.systemURL(for: id)
         let micOut = channels.microphone
         let systemOut = channels.system

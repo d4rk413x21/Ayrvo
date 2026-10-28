@@ -14,7 +14,7 @@ struct LiveTranscriberTests {
         samples[1][0] = -0.25
         samples[1][1] = -0.5
 
-        let copy = try #require(LiveTranscriber.copy(source))
+        let copy = try #require(AudioPCM.copy(source))
         samples[0][0] = 1
         samples[1][1] = 1
         let copied = try #require(copy.floatChannelData)

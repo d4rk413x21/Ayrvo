@@ -8,13 +8,6 @@ import SwiftUI
 final class RecordingSession: ObservableObject {
   /// Number of bars in the live mic level meter. Drives `micBarLevels` init.
   private static let levelBarCount = 12
-  /// Seconds to wait for a non-silent system-audio signal before warning the
-  /// user that System Audio Recording may not be granted.
-  private static let systemSignalCheckInterval: TimeInterval = 15
-  /// Watchdog polls the system tap callback count this often.
-  private static let systemTapWatchdogInterval: TimeInterval = 5
-  /// If callbacks haven't advanced for this long, the tap is considered stalled.
-  private static let systemTapWatchdogGrace: TimeInterval = 10
 
   let meetingID: UUID
   let startedAt = Date()
@@ -74,11 +67,7 @@ final class RecordingSession: ObservableObject {
   private var stopped = false
   private var activeObserver: NSObjectProtocol?
   private var rosterTimer: Timer?
-  private var systemSignalCheck: Task<Void, Never>?
-  /// Watchdog that monitors the system tap callback count. If callbacks stall
-  /// (the tap died but isRunning is still true), triggers a rebuild so the
-  /// system side of the recording resumes without losing the mic side.
-  private var systemTapWatchdog: Task<Void, Never>?
+  private var systemAudioMonitor: SystemAudioMonitor?
   private var lastLivePersist = Date.distantPast
   private var ticker: Timer?
   /// 30s coarse timer driving `menuBarElapsed` for the status-bar item.
@@ -381,62 +370,9 @@ final class RecordingSession: ObservableObject {
     menuBarTicker?.tolerance = 5
 
     if systemStarted {
-      systemSignalCheck = Task { [weak self] in
-        try? await Task.sleep(for: .seconds(Self.systemSignalCheckInterval))
-        guard !Task.isCancelled, let self, self.systemStarted, !self.tap.signalDetected else {
-          return
-        }
-        let count = self.tap.currentCallbackCount
-        AyrvoConsoleLog.recording(
-          count == 0
-            ? "system tap received no callbacks after \(Int(Self.systemSignalCheckInterval))s — confirm another app is playing audio; if so, check System Audio Recording permission"
-            : "system tap received audio buffers but no audible signal after \(Int(Self.systemSignalCheckInterval))s — confirm playback is audible and System Audio Recording is allowed"
-        )
-      }
-      startSystemTapWatchdog()
-    }
-  }
-
-  /// Monitors the system tap's IO callback count. If it stops advancing for
-  /// more than the grace window (the tap died — common when Bluetooth output
-  /// changes mid-call or the aggregate device is disrupted), triggers a
-  /// rebuild so the system side of the recording resumes. The mic side is
-  /// unaffected. One rebuild at a time; a rebuild that fails leaves the
-  /// watchdog armed for the next interval.
-  private func startSystemTapWatchdog() {
-    let interval = Self.systemTapWatchdogInterval
-    let grace = Self.systemTapWatchdogGrace
-    systemTapWatchdog = Task { [weak self] in
-      var lastCount: UInt64 = 0
-      var stalledSince: Date? = nil
-      while !Task.isCancelled {
-        try? await Task.sleep(for: .seconds(interval))
-        guard !Task.isCancelled, let self, self.systemStarted else { return }
-        let count = self.tap.currentCallbackCount
-        if count == 0 {
-          // A process tap may legitimately receive no callbacks until another
-          // app plays sound. Repeatedly tearing down a never-active tap can
-          // interrupt permission initialization and does not diagnose silence.
-          stalledSince = nil
-        } else if count == lastCount {
-          // A previously active tap has stopped delivering callbacks.
-          let since = stalledSince ?? Date()
-          stalledSince = since
-          if Date().timeIntervalSince(since) >= grace {
-            AyrvoConsoleLog.recording(
-              "system tap stalled (callbacks=\(count) for \(Int(Date().timeIntervalSince(since)))s) — rebuilding"
-            )
-            self.tap.rebuildCapture()
-            // Reset so the watchdog re-arms after the rebuild; the
-            // callback count will advance if the rebuild succeeded.
-            lastCount = self.tap.currentCallbackCount
-            stalledSince = nil
-          }
-        } else {
-          lastCount = count
-          stalledSince = nil
-        }
-      }
+      let monitor = SystemAudioMonitor(tap: tap) { [weak self] in self?.systemStarted == true }
+      systemAudioMonitor = monitor
+      monitor.start()
     }
   }
 
@@ -523,10 +459,8 @@ final class RecordingSession: ObservableObject {
     AyrvoConsoleLog.recording(
       "stop meeting=\(meetingID.uuidString.prefix(8)) elapsed=\(Int(elapsed))s liveSegments=\(liveSegments.count)"
     )
-    systemSignalCheck?.cancel()
-    systemSignalCheck = nil
-    systemTapWatchdog?.cancel()
-    systemTapWatchdog = nil
+    systemAudioMonitor?.stop()
+    systemAudioMonitor = nil
     ticker?.invalidate()
     ticker = nil
     menuBarTicker?.invalidate()
