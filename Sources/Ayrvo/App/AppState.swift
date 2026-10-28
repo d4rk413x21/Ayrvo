@@ -409,7 +409,7 @@ final class AppState: NSObject, ObservableObject {
       meetingID: meetingID, templateName: templateName, forceProvider: forceProvider)
   }
 
-  private func applySummaryUpdate(_ update: ProcessingPipeline.SummaryUpdate, for id: UUID) {
+  private func applySummaryUpdate(_ update: SummaryUpdate, for id: UUID) {
     switch update {
     case .streaming(let text):
       summaryProgress[id] = .streaming

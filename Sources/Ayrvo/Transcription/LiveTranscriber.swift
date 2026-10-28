@@ -100,7 +100,7 @@ final class LiveTranscriber: @unchecked Sendable {
   private var pendingMic: [UInt64: TranscriptSegment] = [:]
   private var nextPendingID: UInt64 = 0
   private var volatile: [String: String] = [:]  // speakerID -> in-progress text
-  private var channels: [Channel] = []
+  private var channels: [SpeechAnalysisChannel] = []
   private var started = false
   private var stopped = false
 
@@ -166,10 +166,10 @@ final class LiveTranscriber: @unchecked Sendable {
       "starting locale=\(resolved.identifier(.bcp47)) offset=\(Int(timeOffset))s")
     try await TranscriptionLocales.ensureModels()
 
-    // Channel setup can block for a while on first-run model asset download. If
+    // SpeechAnalysisChannel setup can block for a while on first-run model asset download. If
     // the second channel fails to build, tear down the first rather than leak it.
     let mic = try await makeChannel(locale: resolved, speakerID: Self.youSpeakerID)
-    let system: Channel
+    let system: SpeechAnalysisChannel
     do {
       system = try await makeChannel(locale: resolved, speakerID: Self.othersSpeakerID)
     } catch {
@@ -210,7 +210,7 @@ final class LiveTranscriber: @unchecked Sendable {
   private func feed(_ buffer: AVAudioPCMBuffer, speakerID: String) {
     // The tap/engine buffer is only valid for this callback — deep-copy before
     // handing it to another task.
-    guard let copy = CopiedAudioBuffer(buffer) else { return }
+    guard let copy = AudioPCM.CopiedBuffer(buffer) else { return }
     let channel = lock.withLock { channels.first { $0.speakerID == speakerID } }
     channel?.rawContinuation.yield(copy)
   }
@@ -244,78 +244,17 @@ final class LiveTranscriber: @unchecked Sendable {
   }
 
   /// Finishes each channel's input and awaits its tasks to completion.
-  private static func teardown(_ channels: [Channel]) async {
+  private static func teardown(_ channels: [SpeechAnalysisChannel]) async {
     for c in channels { c.rawContinuation.finish() }
     for c in channels { await c.finish() }
   }
 
-  // MARK: - Channel setup
+  // MARK: - SpeechAnalysisChannel setup
 
-  private func makeChannel(locale: Locale, speakerID: String) async throws -> Channel {
-    let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-    if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-      try await request.downloadAndInstall()
+  private func makeChannel(locale: Locale, speakerID: String) async throws -> SpeechAnalysisChannel {
+    try await SpeechAnalysisChannel.make(locale: locale, speakerID: speakerID) { [weak self] result in
+      self?.handle(result, speakerID: speakerID)
     }
-    guard
-      let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [
-        transcriber
-      ])
-    else {
-      throw TranscriberError.modelUnavailable
-    }
-    let analyzer = SpeechAnalyzer(modules: [transcriber])
-
-    // Raw tap/engine buffers arrive here from the audio thread (bounded so a
-    // slow converter drops audio rather than growing memory unbounded).
-    let (rawStream, rawContinuation) = AsyncStream<CopiedAudioBuffer>.makeStream(
-      bufferingPolicy: .bufferingNewest(64))
-    let (inputStream, inputContinuation) = AsyncStream<AnalyzerInput>.makeStream()
-
-    // Convert each raw buffer to the analyzer's required format on one task
-    // (AVAudioConverter isn't thread-safe; keep it single-threaded here).
-    let convertTask = Task.detached {
-      var converter: AVAudioConverter?
-      var converterInput: AVAudioFormat?
-      for await copied in rawStream {
-        let raw = copied.buffer
-        if converter == nil || converterInput != raw.format {
-          converter = AVAudioConverter(from: raw.format, to: analyzerFormat)
-          converter?.primeMethod = .none
-          converterInput = raw.format
-        }
-        guard let converter, let out = Self.convert(raw, with: converter, to: analyzerFormat)
-        else { continue }
-        inputContinuation.yield(AnalyzerInput(buffer: out))
-      }
-      inputContinuation.finish()
-    }
-
-    let resultsTask = Task { [weak self] in
-      do {
-        for try await result in transcriber.results {
-          self?.handle(result, speakerID: speakerID)
-        }
-      } catch {
-        AyrvoConsoleLog.live("\(speakerID) stream error — \(error.localizedDescription)")
-      }
-    }
-
-    let analyzerTask = Task {
-      do {
-        if let last = try await analyzer.analyzeSequence(inputStream) {
-          try await analyzer.finalizeAndFinish(through: last)
-        } else {
-          await analyzer.cancelAndFinishNow()
-        }
-      } catch {
-        await analyzer.cancelAndFinishNow()
-      }
-    }
-
-    return Channel(
-      speakerID: speakerID,
-      rawContinuation: rawContinuation,
-      tasks: [convertTask, resultsTask, analyzerTask])
   }
 
   private func handle(_ result: SpeechTranscriber.Result, speakerID: String) {
@@ -519,71 +458,5 @@ final class LiveTranscriber: @unchecked Sendable {
       }
       i -= 1
     }
-  }
-
-  // MARK: - Channel
-
-  private final class Channel {
-    let speakerID: String
-    let rawContinuation: AsyncStream<CopiedAudioBuffer>.Continuation
-    private let tasks: [Task<Void, Never>]
-
-    init(
-      speakerID: String,
-      rawContinuation: AsyncStream<CopiedAudioBuffer>.Continuation,
-      tasks: [Task<Void, Never>]
-    ) {
-      self.speakerID = speakerID
-      self.rawContinuation = rawContinuation
-      self.tasks = tasks
-    }
-
-    func finish() async { for t in tasks { _ = await t.value } }
-  }
-
-  // MARK: - Buffer helpers
-
-  // The SDK cannot prove PCM ownership; only fresh deep copies enter the single-consumer stream.
-  private struct CopiedAudioBuffer: @unchecked Sendable {
-    let buffer: AVAudioPCMBuffer
-
-    init?(_ source: AVAudioPCMBuffer) {
-      guard let copy = LiveTranscriber.copy(source) else { return nil }
-      buffer = copy
-    }
-  }
-
-  /// Deep-copies a float PCM buffer (the only sample format the mic engine and
-  /// the Core Audio tap deliver). Returns nil for empty or non-float buffers —
-  /// live transcription simply skips those; the batch pass still has them.
-  static func copy(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-    guard buffer.frameLength > 0,
-      let out = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameLength),
-      let src = buffer.floatChannelData, let dst = out.floatChannelData
-    else { return nil }
-    out.frameLength = buffer.frameLength
-    let bytes = Int(buffer.frameLength) * MemoryLayout<Float>.size
-    for ch in 0..<Int(buffer.format.channelCount) { memcpy(dst[ch], src[ch], bytes) }
-    return out
-  }
-
-  static func convert(
-    _ input: AVAudioPCMBuffer, with converter: AVAudioConverter, to format: AVAudioFormat
-  ) -> AVAudioPCMBuffer? {
-    let ratio = format.sampleRate / input.format.sampleRate
-    let capacity = AVAudioFrameCount((Double(input.frameLength) * ratio).rounded(.up)) + 64
-    guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
-    var fed = false
-    var error: NSError?
-    let status = converter.convert(to: out, error: &error) { _, outStatus in
-      if fed {
-        outStatus.pointee = .noDataNow
-        return nil
-      }
-      fed = true
-      outStatus.pointee = .haveData
-      return input
-    }
-    return (status != .error && out.frameLength > 0) ? out : nil
   }
 }

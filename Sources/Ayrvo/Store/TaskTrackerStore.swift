@@ -234,6 +234,20 @@ final class TaskTrackerStore: ObservableObject {
         return task
     }
 
+    /// Track an extracted item once per source meeting, including items without a known source.
+    func track(_ item: ActionItem, source: TaskSource?, currentUser: String = AppSettings.currentUserName) {
+        guard !tasks.contains(where: { $0.source?.meetingID == source?.meetingID &&
+            $0.text.lowercased().trimmingCharacters(in: .whitespaces) == item.key
+        }) else { return }
+        let owner = resolveOwner(item.owner ?? currentUser)
+        add(
+            text: item.text,
+            owner: owner,
+            isMine: owner.caseInsensitiveCompare(currentUser) == .orderedSame,
+            priority: TaskPriorityHeuristics.assess(for: item.text, owner: item.owner),
+            source: source)
+    }
+
     /// Update a task in place. No-op if the id isn't found.
     func update(_ task: TrackedTask) {
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }

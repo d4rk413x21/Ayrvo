@@ -157,10 +157,10 @@ enum Transcriber {
             }
             guard readBuffer.frameLength > 0 else { break }
 
-            if let converter, let converted = LiveTranscriber.convert(
+            if let converter, let converted = AudioPCM.convert(
                 readBuffer, with: converter, to: analyzerFormat) {
                 continuation.yield(AnalyzerInput(buffer: converted))
-            } else if let copy = LiveTranscriber.copy(readBuffer) {
+            } else if let copy = AudioPCM.copy(readBuffer) {
                 continuation.yield(AnalyzerInput(buffer: copy))
             }
         }

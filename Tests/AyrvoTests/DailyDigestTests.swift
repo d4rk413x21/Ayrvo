@@ -69,6 +69,31 @@ struct DailyDigestTests {
         #expect(digest.summary.contains("📌 Action Items Due:"))
     }
 
+    @Test func testItemSourcesDoNotDependOnMeetingOrItemPositions() {
+        let empty = makeMeeting(title: "No tasks", createdAt: yesterdayStart.addingTimeInterval(8 * 3600))
+        let first = makeMeeting(title: "Planning", createdAt: yesterdayStart.addingTimeInterval(9 * 3600))
+        let second = makeMeeting(title: "Review", createdAt: yesterdayStart.addingTimeInterval(10 * 3600))
+        let digest = generator.generate(for: now, meetings: [second, empty, first], agenda: [], summaries: [
+            first.id: "- [ ] First task\n- [ ] Second task",
+            second.id: "- [ ] Third task"
+        ])
+        #expect(digest.actionItems.count == 3)
+        #expect(digest.actionItems.map { digest.actionItemSources[$0.id]?.meetingID } == [first.id, first.id, second.id])
+        #expect(digest.actionItemSources.values.allSatisfy { $0.meetingID != empty.id })
+    }
+
+    @Test func testTodayItemsRetainSourcesWhenTextIsRepeatedAcrossMeetings() {
+        let first = makeMeeting(title: "Planning", createdAt: now.addingTimeInterval(-3600))
+        let second = makeMeeting(title: "Review", createdAt: now.addingTimeInterval(-1800))
+        let digest = generator.generateToday(for: now, meetings: [second, first], agenda: [], summaries: [
+            first.id: "- [ ] Follow up",
+            second.id: "- [ ] Follow up"
+        ])
+        #expect(digest.actionItems.count == 2)
+        #expect(digest.actionItems.map { digest.actionItemSources[$0.id]?.meetingID } == [first.id, second.id])
+        #expect(digest.actionItems.map { digest.actionItemSources[$0.id]?.meetingTitle } == ["Planning", "Review"])
+    }
+
     @Test func testTodayAgendaIncluded() {
         let e1 = makeEvent(id: "s1", title: "Standup", hour: 10)
         let e2 = makeEvent(id: "s2", title: "Review", hour: 14)

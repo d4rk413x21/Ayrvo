@@ -175,35 +175,6 @@ struct ProcessingPipelineTests {
         #expect(merged == existing)
     }
 
-    // MARK: - #82: generateTitle edge cases
-
-    /// Validates any non-nil title returned by `generateTitle` against the
-    /// `cleaned` invariants: non-empty, ≤80 chars, single line. The private
-    /// `cleaned` enforces these, so a non-nil result is always well-formed.
-    private func assertValidTitle(_ title: String?, sourceLocation: SourceLocation = #_sourceLocation) {
-        guard let title else { return }  // nil is an acceptable result (no engine available)
-        #expect(!(title.isEmpty), "Title must not be empty — got \"\(title)\"", sourceLocation: sourceLocation)
-        #expect(title.count <= 80, "Title must be ≤80 chars — got \"\(title)\"", sourceLocation: sourceLocation)
-        #expect(!(title.contains("\n")), "Title must be single-line — got \"\(title)\"", sourceLocation: sourceLocation)
-    }
-
-    @Test func testGenerateTitleWithEmptySummary() async {
-        // An empty summary must not crash the title generator. Whatever engine
-        // is available (Apple/Codex/Claude) either returns nil or a short,
-        // non-empty single-line title — `cleaned` rejects empty/multiline output.
-        let title = await ProcessingPipeline.generateTitle(summary: "", provider: "apple")
-        assertValidTitle(title)
-    }
-
-    @Test func testGenerateTitleWithOversizedSummary() async {
-        // A summary far larger than the `maxTitleSourceChars` cap (2000) must
-        // be truncated before being fed to any engine, so the call must not
-        // crash or hang on a multi-megabyte input. The returned title, if any,
-        // is still subject to the `cleaned` invariants.
-        let oversized = String(repeating: "This is a long meeting summary. ", count: 500)  // ~17k chars
-        let title = await ProcessingPipeline.generateTitle(summary: oversized, provider: "apple")
-        assertValidTitle(title)
-    }
 }
 
 // MARK: - AppleSummarizer.chunk / splitLong (long-line splitting)

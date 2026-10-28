@@ -93,17 +93,9 @@ enum AIAsk {
                 provider: provider, prompt: AskContextBuilder.enrichForCLI(prompt), systemPrompt: systemPrompt)
         }
         TokenUsageTracker.shared.record(
-            promptTokens: Self.estimateTokens(prompt),
-            completionTokens: Self.estimateTokens(result))
+            promptTokens: TokenUsageTracker.estimatedTokens(prompt),
+            completionTokens: TokenUsageTracker.estimatedTokens(result))
         return result
-    }
-
-    /// Rough token estimate (~4 chars/token, the TN3193 heuristic AppleSummarizer
-    /// uses for the on-device model). The CLI/API results don't expose real token
-    /// counts, so we approximate to keep the usage chart populated — the
-    /// infrastructure is the point, not billing-grade accuracy.
-    private static func estimateTokens(_ text: String) -> Int {
-        max(text.count / 4, 1)
     }
 
     @discardableResult

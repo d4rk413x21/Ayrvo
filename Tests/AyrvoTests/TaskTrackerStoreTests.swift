@@ -34,6 +34,34 @@ final class TaskTrackerStoreTests {
         #expect(task.isMine)
     }
 
+    @Test func testTrackingDeduplicatesWithinAMeetingButPreservesOtherSources() {
+        let first = TaskSource(meetingID: UUID(), meetingTitle: "Planning")
+        let second = TaskSource(meetingID: UUID(), meetingTitle: "Review")
+        let item = ActionItem(text: "Follow up", owner: "Alice", isChecked: false, lineNumber: 0)
+        store.track(item, source: first, currentUser: "Alice")
+        store.track(item, source: first, currentUser: "Alice")
+        store.track(item, source: second, currentUser: "Alice")
+        #expect(store.tasks.count == 2)
+        #expect(store.tasks.allSatisfy { $0.isMine })
+        #expect(Set(store.tasks.compactMap { $0.source?.meetingID }) == [first.meetingID, second.meetingID])
+    }
+
+    @Test func testTrackingAnItemWithoutASourceDoesNotInventOneOrDuplicateIt() {
+        let item = ActionItem(text: "Follow up", owner: nil, isChecked: false, lineNumber: 0)
+        store.track(item, source: nil, currentUser: "Alice")
+        store.track(item, source: nil, currentUser: "Alice")
+        #expect(store.tasks.count == 1)
+        #expect(store.tasks.first?.source == nil)
+    }
+
+    @Test func testTrackingResolvesOwnerAliases() {
+        store.addAlias(from: "Speaker 1", to: "Alice")
+        let item = ActionItem(text: "Follow up", owner: "Speaker 1", isChecked: false, lineNumber: 0)
+        store.track(item, source: nil, currentUser: "Alice")
+        #expect(store.tasks.first?.owner == "Alice")
+        #expect(store.tasks.first?.isMine == true)
+    }
+
     // MARK: - Toggle
 
     @Test func testToggleMarksComplete() {

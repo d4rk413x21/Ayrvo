@@ -204,6 +204,24 @@ extension SharedStateTests {
             #expect(archive.sideNotes(for: meeting.id) == "Updated by another editor")
         }
 
+        @Test func testTemplateListingKeepsFailedEditsVisibleUntilRecovery() throws {
+            let store = TemplateStore(root: root)
+            try store.save(SummaryTemplate(name: "Custom", body: "Original"))
+            let file = store.dir.appendingPathComponent("Custom.md")
+            try FileManager.default.removeItem(at: file)
+            try FileManager.default.createDirectory(at: file, withIntermediateDirectories: false)
+            #expect(throws: (any Error).self) {
+                try store.save(SummaryTemplate(name: "Custom", body: "Edited"))
+            }
+            #expect(store.list().filter { $0.name == "Custom" }.count == 1)
+            #expect(store.template(named: "Custom")?.body == "Edited")
+            try FileManager.default.removeItem(at: file)
+            #expect(store.template(named: "Custom")?.body == "Edited")
+            FilePersistence.retryAll()
+            #expect(FilePersistence.failure(at: file) == nil)
+            #expect(try String(contentsOf: file, encoding: .utf8) == "Edited")
+        }
+
         @Test func testDeletingMeetingDiscardsItsPendingWrites() throws {
             let archive = MeetingArchive(root: root)
             let id = UUID()

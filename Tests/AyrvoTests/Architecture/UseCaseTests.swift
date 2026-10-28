@@ -152,7 +152,7 @@ struct UseCaseTests {
         let notifications = MockNotificationService()
         var progressStages: [String] = []
         let processing = MockProcessingService()
-        processing.outcome = ProcessingPipeline.Outcome(state: .ready)
+        processing.outcome = ProcessingOutcome(state: .ready)
 
         let useCase = ProcessMeetingUseCase(
             meetingRepository: meetings,
@@ -204,7 +204,7 @@ struct UseCaseTests {
         meetings.upsert(meeting)
 
         let processing = MockProcessingService()
-        processing.outcome = ProcessingPipeline.Outcome(
+        processing.outcome = ProcessingOutcome(
             state: .ready,
             speakers: [Speaker(id: "s1", name: "Speaker 1")])
 
@@ -226,7 +226,7 @@ struct UseCaseTests {
 
         let notifications = MockNotificationService()
         let processing = MockProcessingService()
-        processing.outcome = ProcessingPipeline.Outcome(state: .failed, notice: "No audio")
+        processing.outcome = ProcessingOutcome(state: .failed, notice: "No audio")
 
         let useCase = ProcessMeetingUseCase(
             meetingRepository: meetings,

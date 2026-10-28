@@ -55,49 +55,6 @@ final class MicRecorder: @unchecked Sendable {
         }
     }
 
-    /// True when the default input routes over Bluetooth (AirPods, etc.). Zoom often
-    /// holds exclusive access to that mic during a call, so Ayrvo may fail to start.
-    static var defaultInputIsBluetooth: Bool {
-        defaultInputTransport == kAudioDeviceTransportTypeBluetooth
-    }
-
-    static var defaultOutputIsBluetooth: Bool {
-        guard let device = defaultOutputDeviceID else { return false }
-        return deviceTransport(device) == kAudioDeviceTransportTypeBluetooth
-    }
-
-    /// True when remote audio is likely bleeding into the built-in mic (BT output).
-    static var headphoneBleedLikely: Bool {
-        defaultOutputIsBluetooth
-    }
-
-    static var defaultInputDeviceName: String? {
-        guard let device = defaultInputDeviceID else { return nil }
-        return deviceName(device)
-    }
-
-    static var defaultOutputDeviceName: String? {
-        guard let device = defaultOutputDeviceID else { return nil }
-        return deviceName(device)
-    }
-
-    static func logAudioDeviceSnapshot(context: String) {
-        let micAuth = AVCaptureDevice.authorizationStatus(for: .audio)
-        let micLabel: String = switch micAuth {
-        case .authorized: "authorized"
-        case .denied: "denied"
-        case .restricted: "restricted"
-        case .notDetermined: "notDetermined"
-        @unknown default: "unknown(\(micAuth.rawValue))"
-        }
-        let sysLabel = SystemAudioPermission.statusLabel
-        let input = defaultInputDeviceName ?? "none"
-        let output = defaultOutputDeviceName ?? "none"
-        let transport = defaultInputTransport.map(transportLabel) ?? "unknown"
-        AyrvoConsoleLog.recording(
-            "\(context) micTCC=\(micLabel) systemTCC=\(sysLabel) input=[\(input)] transport=\(transport) output=[\(output)]")
-    }
-
     struct CaptureStats: Sendable {
         var bufferCount = 0
         var framesWritten: UInt64 = 0
@@ -106,142 +63,6 @@ final class MicRecorder: @unchecked Sendable {
     }
 
     private(set) var captureStats = CaptureStats()
-
-    private static func deviceName(_ device: AudioObjectID) -> String? {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioObjectPropertyName,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var name: CFString = "" as CFString
-        var size = UInt32(MemoryLayout<CFString>.stride)
-        guard AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &name) == noErr
-        else { return nil }
-        return name as String
-    }
-
-    private static var defaultOutputDeviceID: AudioObjectID? {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var device = AudioObjectID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<AudioObjectID>.stride)
-        guard AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &device) == noErr,
-              device != kAudioObjectUnknown
-        else { return nil }
-        return device
-    }
-
-    private static func transportLabel(_ transport: UInt32) -> String {
-        switch transport {
-        case kAudioDeviceTransportTypeBuiltIn: return "builtIn"
-        case kAudioDeviceTransportTypeBluetooth: return "bluetooth"
-        case kAudioDeviceTransportTypeUSB: return "usb"
-        case kAudioDeviceTransportTypeAggregate: return "aggregate"
-        case kAudioDeviceTransportTypeVirtual: return "virtual"
-        default: return "other(\(transport))"
-        }
-    }
-
-    private static var defaultInputDeviceID: AudioObjectID? {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultInputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var device = AudioObjectID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<AudioObjectID>.stride)
-        guard AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &device) == noErr,
-              device != kAudioObjectUnknown
-        else { return nil }
-        return device
-    }
-
-    private static var defaultInputTransport: UInt32? {
-        guard let device = defaultInputDeviceID else { return nil }
-        return deviceTransport(device)
-    }
-
-    private static func deviceTransport(_ device: AudioObjectID) -> UInt32? {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyTransportType,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var transport: UInt32 = 0
-        var size = UInt32(MemoryLayout<UInt32>.stride)
-        guard AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &transport) == noErr
-        else { return nil }
-        return transport
-    }
-
-    private static func builtInInputDevice() -> AudioObjectID? {
-        for device in allInputDevices() {
-            guard deviceTransport(device) == kAudioDeviceTransportTypeBuiltIn,
-                  let name = deviceName(device),
-                  name.localizedCaseInsensitiveContains("microphone")
-            else { continue }
-            return device
-        }
-        return allInputDevices().first { deviceTransport($0) == kAudioDeviceTransportTypeBuiltIn }
-    }
-
-    private static func allInputDevices() -> [AudioObjectID] {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDevices,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var size: UInt32 = 0
-        guard AudioObjectGetPropertyDataSize(
-            AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size) == noErr, size > 0
-        else { return [] }
-        let count = Int(size) / MemoryLayout<AudioObjectID>.stride
-        var devices = [AudioObjectID](repeating: kAudioObjectUnknown, count: count)
-        guard AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &devices) == noErr
-        else { return [] }
-        return devices.filter { inputChannelCount($0) > 0 }
-    }
-
-    private static func inputChannelCount(_ device: AudioObjectID) -> Int {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioDevicePropertyStreamConfiguration,
-            mScope: kAudioDevicePropertyScopeInput,
-            mElement: kAudioObjectPropertyElementMain)
-        var size: UInt32 = 0
-        guard AudioObjectGetPropertyDataSize(device, &addr, 0, nil, &size) == noErr, size > 0
-        else { return 0 }
-        let raw = UnsafeMutableRawPointer.allocate(
-            byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
-        defer { raw.deallocate() }
-        guard AudioObjectGetPropertyData(device, &addr, 0, nil, &size, raw) == noErr
-        else { return 0 }
-        return Int(raw.assumingMemoryBound(to: AudioBufferList.self).pointee.mNumberBuffers)
-    }
-
-    private static func setDefaultInputDevice(_ device: AudioObjectID) throws {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultInputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain)
-        var deviceCopy = device
-        let status = AudioObjectSetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil,
-            UInt32(MemoryLayout<AudioObjectID>.stride), &deviceCopy)
-        guard status == noErr else { throw MicRecorderError.inputUnavailable }
-    }
-
-    private static func restoreDefaultInputDevice(_ device: AudioObjectID) {
-        try? setDefaultInputDevice(device)
-    }
-
-    private static func fourCC(_ code: Int) -> String {
-        let v = UInt32(truncatingIfNeeded: code)
-        return String(bytes: [
-            UInt8((v >> 24) & 0xFF), UInt8((v >> 16) & 0xFF),
-            UInt8((v >> 8) & 0xFF), UInt8(v & 0xFF),
-        ], encoding: .ascii) ?? "?"
-    }
 
     private let lock = NSLock()
     private var writeFailure = AudioWriteFailure()
@@ -287,7 +108,7 @@ final class MicRecorder: @unchecked Sendable {
         writeFailure = AudioWriteFailure()
         savedDefaultInputDevice = nil
         activeInputDeviceName = nil
-        Self.logAudioDeviceSnapshot(context: "mic start")
+        AudioDeviceRouting.logAudioDeviceSnapshot(context: "mic start")
 
         do {
             try startEngineLocked(writingTo: url)
@@ -299,23 +120,23 @@ final class MicRecorder: @unchecked Sendable {
             // BT headset, which would kill our engine. We suppress the
             // default-input listener while the fallback is active so those
             // resets don't trigger a losing restart loop.
-            guard Self.defaultInputIsBluetooth,
-                  let builtIn = Self.builtInInputDevice(),
-                  let previous = Self.defaultInputDeviceID
+            guard AudioDeviceRouting.defaultInputIsBluetooth,
+                  let builtIn = AudioDeviceRouting.builtInInputDevice(),
+                  let previous = AudioDeviceRouting.defaultInputDeviceID
             else { throw error }
-            let builtInName = Self.deviceName(builtIn) ?? "built-in"
+            let builtInName = AudioDeviceRouting.deviceName(builtIn) ?? "built-in"
             AyrvoConsoleLog.recording(
                 "mic BT engine failed — retrying with [\(builtInName)] (source=\(sourceApp ?? "manual"))")
             teardownLocked()
             usingBuiltInFallback = true
             savedDefaultInputDevice = previous
-            try Self.setDefaultInputDevice(builtIn)
+            try AudioDeviceRouting.setDefaultInputDevice(builtIn)
             do {
                 try startEngineLocked(writingTo: url)
                 activeInputDeviceName = builtInName
                 AyrvoConsoleLog.recording("mic started on built-in fallback [\(builtInName)]")
             } catch let fallbackError {
-                Self.restoreDefaultInputDevice(previous)
+                AudioDeviceRouting.restoreDefaultInputDevice(previous)
                 savedDefaultInputDevice = nil
                 usingBuiltInFallback = false
                 throw fallbackError
@@ -326,7 +147,7 @@ final class MicRecorder: @unchecked Sendable {
     private func startEngineLocked(writingTo url: URL) throws {
         let engine = AVAudioEngine()
         let inputFormat = engine.inputNode.outputFormat(forBus: 0)
-        let inputName = Self.defaultInputDeviceName ?? "unknown"
+        let inputName = AudioDeviceRouting.defaultInputDeviceName ?? "unknown"
         AyrvoConsoleLog.recording(
             "mic engine format device=[\(inputName)] sr=\(inputFormat.sampleRate) ch=\(inputFormat.channelCount)")
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
@@ -418,7 +239,7 @@ final class MicRecorder: @unchecked Sendable {
         } catch {
             let ns = error as NSError
             AyrvoConsoleLog.recording(
-                "mic engine failed device=[\(inputName)] domain=\(ns.domain) code=\(ns.code) fourCC=\(Self.fourCC(ns.code)) — \(error.localizedDescription)")
+                "mic engine failed device=[\(inputName)] domain=\(ns.domain) code=\(ns.code) fourCC=\(AudioDeviceRouting.fourCC(ns.code)) — \(error.localizedDescription)")
             teardownLocked()
             throw error
         }
@@ -436,7 +257,7 @@ final class MicRecorder: @unchecked Sendable {
         defer { lock.unlock() }
         teardownLocked()
         if let saved {
-            Self.restoreDefaultInputDevice(saved)
+            AudioDeviceRouting.restoreDefaultInputDevice(saved)
             savedDefaultInputDevice = nil
             usingBuiltInFallback = false
             AyrvoConsoleLog.recording("mic restored default input device")
@@ -525,7 +346,7 @@ final class MicRecorder: @unchecked Sendable {
         // Build a fresh engine bound to the current default input.
         let fresh = AVAudioEngine()
         let inputFormat = fresh.inputNode.outputFormat(forBus: 0)
-        let inputName = Self.defaultInputDeviceName ?? "unknown"
+        let inputName = AudioDeviceRouting.defaultInputDeviceName ?? "unknown"
         AyrvoConsoleLog.recording(
             "mic restart — fresh engine device=[\(inputName)] sr=\(inputFormat.sampleRate) ch=\(inputFormat.channelCount)")
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
@@ -556,10 +377,10 @@ final class MicRecorder: @unchecked Sendable {
             // Built-in mic fallback: switch the system default input to the
             // built-in mic and retry with another fresh engine. This recovers
             // capture when the BT headset mic is contended (Zoom/Chrome).
-            if !usingBuiltInFallback, Self.defaultInputIsBluetooth,
-               let builtIn = Self.builtInInputDevice(),
-               let previous = Self.defaultInputDeviceID {
-                let builtInName = Self.deviceName(builtIn) ?? "built-in"
+            if !usingBuiltInFallback, AudioDeviceRouting.defaultInputIsBluetooth,
+               let builtIn = AudioDeviceRouting.builtInInputDevice(),
+               let previous = AudioDeviceRouting.defaultInputDeviceID {
+                let builtInName = AudioDeviceRouting.deviceName(builtIn) ?? "built-in"
                 AyrvoConsoleLog.recording(
                     "mic restart — falling back to built-in [\(builtInName)]")
                 // Tear down the failed engine and arm the fallback flag BEFORE
@@ -569,7 +390,7 @@ final class MicRecorder: @unchecked Sendable {
                 fresh.stop(); self.engine = nil
                 usingBuiltInFallback = true
                 savedDefaultInputDevice = previous
-                try? Self.setDefaultInputDevice(builtIn)
+                try? AudioDeviceRouting.setDefaultInputDevice(builtIn)
                 let retry = AVAudioEngine()
                 do {
                     try installTapLocked(on: retry)
@@ -588,7 +409,7 @@ final class MicRecorder: @unchecked Sendable {
                 } catch let fallbackError {
                     AyrvoConsoleLog.recording(
                         "mic built-in fallback on restart failed — \(fallbackError.localizedDescription)")
-                    Self.restoreDefaultInputDevice(previous)
+                    AudioDeviceRouting.restoreDefaultInputDevice(previous)
                     savedDefaultInputDevice = nil
                     usingBuiltInFallback = false
                 }

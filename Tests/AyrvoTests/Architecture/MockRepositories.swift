@@ -101,8 +101,8 @@ struct MockSettingsRepository: SettingsRepository {
 // MARK: - Processing
 
 final class MockProcessingService: ProcessingService, @unchecked Sendable {
-    var outcome = ProcessingPipeline.Outcome(state: .ready)
-    var summarizeResult: ProcessingPipeline.SummaryOutcome =
+    var outcome = ProcessingOutcome(state: .ready)
+    var summarizeResult: SummaryOutcome =
         .success("# Notes\n\nTest summary", provider: "apple")
     var generatedTitle: String? = "Test Meeting Title"
     private(set) var processCallCount = 0
@@ -113,8 +113,8 @@ final class MockProcessingService: ProcessingService, @unchecked Sendable {
         meeting: Meeting,
         archive: MeetingArchive,
         onProgress: @escaping @Sendable (String) -> Void,
-        onSummary: @escaping @Sendable (ProcessingPipeline.SummaryUpdate) -> Void
-    ) async -> ProcessingPipeline.Outcome {
+        onSummary: @escaping @Sendable (SummaryUpdate) -> Void
+    ) async -> ProcessingOutcome {
         processCallCount += 1
         onProgress("Done")
         onSummary(.done)
@@ -127,7 +127,7 @@ final class MockProcessingService: ProcessingService, @unchecked Sendable {
         userNotes: String,
         forceProvider: AIProvider? = nil,
         onDelta: (@Sendable (String) -> Void)?
-    ) async -> ProcessingPipeline.SummaryOutcome {
+    ) async -> SummaryOutcome {
         summarizeCallCount += 1
         lastSummarizeTranscript = transcript
         if let onDelta { onDelta("partial") }

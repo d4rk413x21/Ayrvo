@@ -113,7 +113,7 @@ final class SystemAudioTap: @unchecked Sendable {
             do {
                 let tap = try createTap()
                 let file = try makeFile(at: url, tapFormat: tap.format)
-                let outputName = Self.defaultOutputDeviceName() ?? "unknown"
+                let outputName = AudioDeviceRouting.defaultOutputDeviceName ?? "unknown"
                 AyrvoConsoleLog.recording(
                     "system tap creating output=[\(outputName)] tapSr=\(tap.format.sampleRate) tapCh=\(tap.format.channelCount)")
                 ioQueue.sync {
@@ -289,7 +289,7 @@ final class SystemAudioTap: @unchecked Sendable {
     /// file's processing format so one continuous recording keeps growing.
     private func rebuildForNewOutputDevice() {
         guard isRunning, let file else { return }
-        let outputName = Self.defaultOutputDeviceName() ?? "unknown"
+        let outputName = AudioDeviceRouting.defaultOutputDeviceName ?? "unknown"
         AyrvoConsoleLog.recording("system tap rebuilding for new output=[\(outputName)]")
         teardownCapture()
         do {
@@ -460,8 +460,8 @@ final class SystemAudioTap: @unchecked Sendable {
     /// True only for an aggregate this app created (name prefix + embedded pid) whose creating
     /// process is no longer alive — never our own, never a live sibling's, never a user device.
     private static func isLeftoverAggregate(_ device: AudioObjectID) -> Bool {
-        guard deviceTransport(device) == kAudioDeviceTransportTypeAggregate,
-              let name = deviceName(device),
+        guard AudioDeviceRouting.deviceTransport(device) == kAudioDeviceTransportTypeAggregate,
+              let name = AudioDeviceRouting.deviceName(device),
               let pid = creatorPID(fromName: name),
               pid != getpid()
         else { return false }
@@ -481,25 +481,6 @@ final class SystemAudioTap: @unchecked Sendable {
     /// transient/permission error never green-lights destroying a live device.
     private static func processIsAlive(_ pid: pid_t) -> Bool {
         kill(pid, 0) == 0 || errno == EPERM
-    }
-
-    private static func deviceTransport(_ device: AudioObjectID) -> UInt32? {
-        var addr = address(kAudioDevicePropertyTransportType)
-        var transport: UInt32 = 0
-        var size = UInt32(MemoryLayout<UInt32>.stride)
-        guard AudioObjectGetPropertyData(device, &addr, 0, nil, &size, &transport) == noErr
-        else { return nil }
-        return transport
-    }
-
-    private static func deviceName(_ device: AudioObjectID) -> String? {
-        var addr = address(kAudioObjectPropertyName)
-        var name: CFString = "" as CFString
-        var size = UInt32(MemoryLayout<CFString>.stride)
-        let ok = withUnsafeMutablePointer(to: &name) { pointer in
-            AudioObjectGetPropertyData(device, &addr, 0, nil, &size, pointer) == noErr
-        }
-        return ok ? (name as String) : nil
     }
 
     // MARK: - HAL helpers
@@ -554,14 +535,4 @@ final class SystemAudioTap: @unchecked Sendable {
         return uid as String
     }
 
-    private static func defaultOutputDeviceName() -> String? {
-        var addr = address(kAudioHardwarePropertyDefaultOutputDevice)
-        var deviceID = AudioObjectID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<AudioObjectID>.stride)
-        guard AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &deviceID) == noErr,
-              deviceID != kAudioObjectUnknown
-        else { return nil }
-        return deviceName(deviceID)
-    }
 }
