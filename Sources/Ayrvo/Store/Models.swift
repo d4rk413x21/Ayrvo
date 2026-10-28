@@ -37,6 +37,8 @@ struct Meeting: Codable, Identifiable, Equatable, Sendable {
     var title: String
     var createdAt: Date
     var duration: TimeInterval = 0
+    /// Start of the current audio files within the full meeting timeline.
+    var audioStartOffset: TimeInterval?
     /// App that triggered detection (e.g. "zoom.us"), if auto-detected.
     var sourceApp: String?
     var calendarEventTitle: String?

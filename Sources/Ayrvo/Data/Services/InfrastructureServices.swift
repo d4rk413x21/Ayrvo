@@ -4,12 +4,13 @@ struct ProcessingServiceImpl: ProcessingService {
     func process(
         meeting: Meeting,
         archive: MeetingArchive,
+        processingRun: UUID,
         onProgress: @escaping @Sendable (String) -> Void,
         onSummary: @escaping @Sendable (SummaryUpdate) -> Void
     ) async -> ProcessingOutcome {
         await ProcessingPipeline.run(
             meeting: meeting,
-            archive: archive,
+            archive: archive, processingRun: processingRun,
             onProgress: onProgress,
             onSummary: onSummary)
     }

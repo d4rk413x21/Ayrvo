@@ -93,6 +93,8 @@ final class RecordingSession: ObservableObject {
     self.archive = archive
     self.elapsedOffset = elapsedOffset
     self.sourceApp = sourceApp
+    self.elapsed = elapsedOffset
+    self.menuBarElapsed = elapsedOffset
   }
 
   /// Pin the transcription locale for this meeting. Persists via `store` so the
@@ -380,6 +382,7 @@ final class RecordingSession: ObservableObject {
   /// state and persists to live.json at most every ~1.5 s (throttled so the MCP
   /// process sees a fresh file without thrashing the disk).
   private func applyLive(_ segments: [TranscriptSegment], _ volatile: String) {
+    guard !stopped else { return }
     volatileText = volatile
     // Echo detection can retract a previously attributed mic sentence
     // and replace it with system speech without changing the segment count.
@@ -431,12 +434,12 @@ final class RecordingSession: ObservableObject {
   }
 
   func stop() {
-    teardownRecorders()
+    let tracker = teardownRecorders()
     // Compute stopNotice off the main thread to avoid the CoreAudio HAL
     // deadlock (MicRecorder.stop()/SystemAudioTap.stop() acquire locks that
     // may be held by a CoreAudio IO callback). Fire-and-forget; the UI
     // observes `@Published stopNotice` when the async block lands.
-    Task { await finalizeStopNotice() }
+    Task { await finalizeStopNotice(tracker: tracker) }
     flushLiveTranscriber()
   }
 
@@ -445,16 +448,17 @@ final class RecordingSession: ObservableObject {
   /// stops and byte check run on a background thread (same deadlock-avoidance
   // as `stop()`), then hop back to the main actor to set `stopNotice`.
   func stopAsync() async {
-    teardownRecorders()
+    let tracker = teardownRecorders()
     // Finalize the files off MainActor, then flush the live transcript before
     // the post-recording pipeline reads either source.
-    await finalizeStopNotice()
+    await finalizeStopNotice(tracker: tracker)
     await flushLiveTranscriberAsync()
   }
 
   /// Synchronous teardown of timers, observers, trackers, and level meters.
-  private func teardownRecorders() {
+  private func teardownRecorders() -> (any PlatformSpeakerTracker)? {
     stopped = true
+    elapsed = max(elapsed, elapsedOffset + Date().timeIntervalSince(startedAt))
     speakerTrackingNotice = nil
     AyrvoConsoleLog.recording(
       "stop meeting=\(meetingID.uuidString.prefix(8)) elapsed=\(Int(elapsed))s liveSegments=\(liveSegments.count)"
@@ -470,7 +474,7 @@ final class RecordingSession: ObservableObject {
       NotificationCenter.default.removeObserver(activeObserver)
       self.activeObserver = nil
     }
-    platformSpeakerTracker?.stop()
+    let tracker = platformSpeakerTracker
     platformSpeakerTracker = nil
     rosterTimer?.invalidate()
     rosterTimer = nil
@@ -479,6 +483,7 @@ final class RecordingSession: ObservableObject {
     LiveTranscriber.remoteSpeakerName = "Others"
     activeRemoteSpeaker = nil
     micBarLevels = Array(repeating: 0, count: Self.levelBarCount)
+    return tracker
   }
 
   /// Finalize the live transcriber: stop it and flush the last live.json.
@@ -490,9 +495,9 @@ final class RecordingSession: ObservableObject {
     // flush the last live.json; the pipeline removes it once the durable
     // transcript.json lands.
     Task {
-      await live.stop()
-      archiveRef.saveLiveTranscript(liveSegments, for: meetingID)
-      AyrvoConsoleLog.recording("live transcript flushed (\(liveSegments.count) segments)")
+      let completed = await live.stop()
+      archiveRef.saveLiveTranscript(completed, for: meetingID)
+      AyrvoConsoleLog.recording("live transcript flushed (\(completed.count) segments)")
     }
   }
 
@@ -518,11 +523,9 @@ final class RecordingSession: ObservableObject {
   /// thread here freezes the UI (the deadlock seen when
   /// `restartAfterConfigurationChange` holds `MicRecorder.lock` while
   /// `stop()` waits for it on the main thread).
-  private func finalizeStopNotice() async {
+  private func finalizeStopNotice(tracker: (any PlatformSpeakerTracker)?) async {
     let micURL = archive.micURL(for: meetingID)
     let systemURL = archive.systemURL(for: meetingID)
-    let micHeard = micStarted ? mic.captureStats.receivedAnyBuffer : false
-    let systemSignal = systemStarted ? tap.signalDetected : false
     let micRecorder = mic
     let systemTap = tap
     let didMic = micStarted
@@ -531,21 +534,25 @@ final class RecordingSession: ObservableObject {
     // (see deadlock note above), then set `stopNotice` back here on the main
     // actor — no `MainActor.run` hop needed since this method is @MainActor
     // and the `await` returns us here.
-    let micBytes: Int
-    let systemBytes: Int
-    (micBytes, systemBytes) = await Task.detached(priority: .userInitiated) {
+    let result = await Task.detached(priority: .userInitiated) {
       if didMic { micRecorder.stop() }
       if didSystem { systemTap.stop() }
+      tracker?.stop()
       let m =
         (try? FileManager.default.attributesOfItem(atPath: micURL.path)[.size] as? Int) ?? 0
       let s =
         (try? FileManager.default.attributesOfItem(atPath: systemURL.path)[.size] as? Int) ?? 0
-      return (m, s)
+      return (
+        micBytes: m, systemBytes: s,
+        micHeard: didMic && micRecorder.captureStats.receivedAnyBuffer,
+        systemSignal: didSystem && systemTap.signalDetected,
+        writeErrors: [micRecorder.writeError, systemTap.writeError].compactMap { $0 })
     }.value
+    let (micBytes, systemBytes) = (result.micBytes, result.systemBytes)
     AyrvoConsoleLog.recording(
-      "capture files mic=\(micBytes)B system=\(systemBytes)B micSignal=\(micHeard) systemSignal=\(systemSignal)"
+      "capture files mic=\(micBytes)B system=\(systemBytes)B micSignal=\(result.micHeard) systemSignal=\(result.systemSignal)"
     )
-    let writeErrors = [mic.writeError, tap.writeError].compactMap { $0 }
+    let writeErrors = result.writeErrors
     if !writeErrors.isEmpty {
       stopNotice = writeErrors.joined(separator: " ")
     } else if micBytes == 0 && systemBytes == 0 {

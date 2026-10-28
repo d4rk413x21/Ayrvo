@@ -31,4 +31,12 @@ final class RecordingSessionTests {
         #expect(session.stopNotice == "No audio was captured — check your microphone and system audio settings")
     }
 
+    @Test func testImmediateStopPreservesTheDurationBeforeResume() async {
+        let session = RecordingSession(meetingID: UUID(), archive: archive, elapsedOffset: 120)
+        #expect(session.elapsed == 120)
+        #expect(session.menuBarElapsed == 120)
+        await session.stopAsync()
+        #expect(session.elapsed >= 120)
+    }
+
 }

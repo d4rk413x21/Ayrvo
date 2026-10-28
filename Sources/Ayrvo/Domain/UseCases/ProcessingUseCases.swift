@@ -23,16 +23,18 @@ final class ProcessMeetingUseCase {
 
     func execute(_ meeting: Meeting) async {
         let id = meeting.id
+        guard !Task.isCancelled, var entry = meetingRepository.meeting(id: id),
+              let run = meetingRepository.archive.beginProcessing(for: id) else { return }
+        defer { meetingRepository.archive.endProcessing(id, run: run) }
         AyrvoConsoleLog.processing("start \(id.uuidString.prefix(8)) \"\(meeting.title)\" state=\(meeting.state)")
         onProgress?(id, "Starting…")
-        var entry = meetingRepository.meeting(id: id) ?? meeting
         entry.state = .processing
 
         let existing = meetingRepository.transcript(for: id)
         let live = meetingRepository.archive.liveTranscript(for: id)
         if !live.isEmpty {
-            let offset = Self.appendOffset(meeting: entry, prior: existing)
-            let merged = existing + Self.offsetSegments(live, by: offset)
+            let existingIDs = Set(existing.map(\.id))
+            let merged = existing + live.filter { !existingIDs.contains($0.id) }
             meetingRepository.saveTranscript(merged, for: id)
             if existing.isEmpty { entry.speakers = LiveTranscriber.speakers }
             AyrvoConsoleLog.processing("merged \(live.count) live segments into transcript")
@@ -43,21 +45,29 @@ final class ProcessMeetingUseCase {
         let outcome = await processingService.process(
             meeting: entry,
             archive: meetingRepository.archive,
+            processingRun: run,
             onProgress: { [id] stage in
-                Task { @MainActor in self.onProgress?(id, stage) }
+                Task { @MainActor in
+                    guard self.meetingRepository.archive.isProcessing(id, run: run) else { return }
+                    self.onProgress?(id, stage)
+                }
             },
             onSummary: { [id] update in
-                Task { @MainActor in self.applySummaryUpdate(update, for: id) }
+                Task { @MainActor in
+                    guard self.meetingRepository.archive.isProcessing(id, run: run) else { return }
+                    self.applySummaryUpdate(update, for: id)
+                }
             })
 
+        guard !Task.isCancelled, meetingRepository.archive.isProcessing(id, run: run),
+              var fresh = meetingRepository.meeting(id: id), fresh.state == .processing else { return }
         onProgress?(id, nil)
         onSummaryProgress?(id, nil)
+        onSummaryUpdate?(id, .done)
         if outcome.state == .ready {
             meetingRepository.archive.removeLiveTranscript(for: id)
         }
 
-        guard var fresh = meetingRepository.meeting(id: id) else { return }
-        guard fresh.state == .processing else { return }
         fresh.state = outcome.state
         fresh.notice = outcome.notice
         if let speakers = outcome.speakers {
@@ -104,21 +114,6 @@ final class ProcessMeetingUseCase {
         }
     }
 
-    private static func appendOffset(meeting: Meeting, prior: [TranscriptSegment]) -> TimeInterval {
-        guard !prior.isEmpty else { return 0 }
-        return max(meeting.duration, prior.map(\.end).max() ?? 0)
-    }
-
-    private static func offsetSegments(
-        _ segments: [TranscriptSegment], by offset: TimeInterval
-    ) -> [TranscriptSegment] {
-        segments.map { seg in
-            var s = seg
-            s.start += offset
-            s.end += offset
-            return s
-        }
-    }
 }
 
 /// Re-runs summary generation for an existing transcript.
