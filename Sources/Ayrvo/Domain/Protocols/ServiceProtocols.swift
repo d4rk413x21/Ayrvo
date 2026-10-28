@@ -5,6 +5,11 @@ import Foundation
 struct RecordingSessionHandle {
     let session: RecordingSession
     let meeting: Meeting
+
+    @MainActor
+    func isCurrent(in service: RecordingService) -> Bool {
+        service.currentSession === session
+    }
 }
 
 /// Captures mic + system audio for a meeting (SRP: recording lifecycle only).
@@ -39,6 +44,7 @@ protocol RecordingService: AnyObject {
 }
 
 enum RecordingError: LocalizedError, Equatable {
+    case cancelled
     case alreadyRecording
     case archiveCreationFailed(String)
     case sessionStartFailed(String)
@@ -47,6 +53,7 @@ enum RecordingError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
+        case .cancelled: "Recording start was cancelled."
         case .alreadyRecording: "A recording is already in progress."
         case .archiveCreationFailed(let why): why
         case .sessionStartFailed(let why): why
@@ -68,6 +75,7 @@ protocol ProcessingService: Sendable {
     func process(
         meeting: Meeting,
         archive: MeetingArchive,
+        processingRun: UUID,
         onProgress: @escaping @Sendable (String) -> Void,
         onSummary: @escaping @Sendable (SummaryUpdate) -> Void
     ) async -> ProcessingOutcome

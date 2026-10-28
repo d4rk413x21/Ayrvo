@@ -19,6 +19,7 @@ final class MeetingDetectionCoordinator {
     private var lastDetectionAnnounce: [pid_t: ContinuousClock.Instant] = [:]
     private static let announceCooldown: Duration = .seconds(15)
     private var pendingAutoStop: Task<Void, Never>?
+    private var manuallyStoppedApps: Set<pid_t> = []
     private static let autoStopGrace: Duration = .seconds(8)
     var isRecording: () -> Bool = { false }
     var isStartingRecording: () -> Bool = { false }
@@ -45,6 +46,7 @@ final class MeetingDetectionCoordinator {
         pendingDetections.removeAll()
         lastDetectionAnnounce.removeAll()
         activeMicApps.removeAll()
+        manuallyStoppedApps.removeAll()
         onActiveMicAppsChanged?(activeMicApps)
         onDetectedAppNameChanged?(nil)
         pendingAutoStop?.cancel()
@@ -60,6 +62,13 @@ final class MeetingDetectionCoordinator {
 
     func dismissDetection() {
         AyrvoConsoleLog.detection("user dismissed prompt")
+        clearPendingDetection()
+    }
+
+    func recordingStoppedManually() {
+        manuallyStoppedApps.formUnion(activeMicApps.keys)
+        pendingAutoStop?.cancel()
+        pendingAutoStop = nil
         clearPendingDetection()
     }
 
@@ -86,10 +95,15 @@ final class MeetingDetectionCoordinator {
 
             if isRecording() { return }
             guard !isStartingRecording() else { return }
+            guard !manuallyStoppedApps.contains(event.pid) else { return }
 
             if settings.autoRecord {
                 AyrvoConsoleLog.detection("auto-record for \(name)")
-                Task { await onAutoRecord?(name) }
+                Task { [weak self] in
+                    guard let self, !self.manuallyStoppedApps.contains(event.pid),
+                          !self.isRecording(), !self.isStartingRecording() else { return }
+                    await self.onAutoRecord?(name)
+                }
             } else {
                 let now = ContinuousClock.now
                 let recentlyAnnounced = lastDetectionAnnounce[event.pid]
@@ -106,6 +120,7 @@ final class MeetingDetectionCoordinator {
         } else {
             AyrvoConsoleLog.detection("mic off — \(name) pid=\(event.pid)")
             activeMicApps.removeValue(forKey: event.pid)
+            manuallyStoppedApps.remove(event.pid)
             onActiveMicAppsChanged?(activeMicApps)
             pendingDetections.removeValue(forKey: event.pid)
             if !isRecording(), event.pid == pendingDetection?.pid {

@@ -265,6 +265,8 @@ final class AppState: NSObject, ObservableObject {
     {
     case .success(let handle):
       applyRecordingHandle(handle)
+    case .failure(.cancelled):
+      break
     case .failure(let error):
       lastError = error.localizedDescription
     }
@@ -291,6 +293,8 @@ final class AppState: NSObject, ObservableObject {
     {
     case .success(let handle):
       applyRecordingHandle(handle)
+    case .failure(.cancelled):
+      break
     case .failure(let error):
       if error == .alreadyRecording {
         reconcileRecordingState()
@@ -315,6 +319,7 @@ final class AppState: NSObject, ObservableObject {
 
   func stopRecording() async {
     AyrvoConsoleLog.recording("AppState.stopRecording")
+    container.detectionCoordinator.recordingStoppedManually()
     session = nil
     recordingMeeting = nil
     updateInFlightCrashMirror()
@@ -323,6 +328,7 @@ final class AppState: NSObject, ObservableObject {
 
   func discardRecording() {
     AyrvoConsoleLog.recording("AppState.discardRecording")
+    container.detectionCoordinator.recordingStoppedManually()
     session = nil
     recordingMeeting = nil
     updateInFlightCrashMirror()
@@ -361,12 +367,18 @@ final class AppState: NSObject, ObservableObject {
     case .success(let handle):
       applyRecordingHandle(handle)
       openMeetingID = handle.meeting.id
+    case .failure(.cancelled):
+      break
     case .failure(let error):
       lastError = error.localizedDescription
     }
   }
 
   private func applyRecordingHandle(_ handle: RecordingSessionHandle) {
+    guard handle.isCurrent(in: container.recordingService) else { return }
+    processingStage[handle.meeting.id] = nil
+    streamingSummaries[handle.meeting.id] = nil
+    summaryProgress[handle.meeting.id] = nil
     session = handle.session
     recordingMeeting = handle.meeting
     updateInFlightCrashMirror()
@@ -382,7 +394,6 @@ final class AppState: NSObject, ObservableObject {
 
   func process(_ meeting: Meeting) async {
     await container.processMeeting.execute(meeting)
-    streamingSummaries[meeting.id] = nil
   }
 
   func retry(meetingID: UUID) async {

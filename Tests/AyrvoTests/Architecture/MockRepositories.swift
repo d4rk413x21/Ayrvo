@@ -112,6 +112,7 @@ final class MockProcessingService: ProcessingService, @unchecked Sendable {
     func process(
         meeting: Meeting,
         archive: MeetingArchive,
+        processingRun: UUID,
         onProgress: @escaping @Sendable (String) -> Void,
         onSummary: @escaping @Sendable (SummaryUpdate) -> Void
     ) async -> ProcessingOutcome {

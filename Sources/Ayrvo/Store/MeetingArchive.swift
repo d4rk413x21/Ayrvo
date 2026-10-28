@@ -17,6 +17,44 @@ import Synchronization
 /// @MainActor MeetingStore wrapper; the MCP server process is read-only.
 final class MeetingArchive: @unchecked Sendable {
     let root: URL
+    private enum Work {
+        case recording
+        case processing(UUID)
+    }
+    private var work: [UUID: Work] = [:]
+
+    func beginRecording(for id: UUID) {
+        queue.sync { work[id] = .recording }
+    }
+
+    func endRecording(for id: UUID) {
+        queue.sync { if case .recording? = work[id] { work[id] = nil } }
+    }
+
+    func beginProcessing(for id: UUID) -> UUID? {
+        queue.sync {
+            if case .recording? = work[id] { return nil }
+            let run = UUID()
+            work[id] = .processing(run)
+            return run
+        }
+    }
+
+    func isProcessing(_ id: UUID, run: UUID) -> Bool {
+        queue.sync {
+            if case .processing(run)? = work[id] { return true }
+            return false
+        }
+    }
+
+    func endProcessing(_ id: UUID, run: UUID) {
+        queue.sync { if case .processing(run)? = work[id] { work[id] = nil } }
+    }
+
+    private func requireProcessing(_ run: UUID?, for id: UUID) throws {
+        guard let run else { return }
+        guard case .processing(run)? = work[id] else { throw ArchiveError.processingSuperseded }
+    }
 
     // Keep the existing library location so the rename does not hide user data.
     static var defaultRoot: URL {
@@ -162,6 +200,7 @@ final class MeetingArchive: @unchecked Sendable {
         case meetingDeleted
         case encodingFailed
         case summaryChanged
+        case processingSuperseded
     }
 
     /// The meeting folder is created once, at recording start. Refusing to
@@ -191,6 +230,7 @@ final class MeetingArchive: @unchecked Sendable {
                 try FileManager.default.removeItem(at: directory)
             }
             FilePersistence.discard(in: directory)
+            work[id] = nil
             invalidateTranscriptCache(for: id)
             summaryCache[id] = nil
         }
@@ -202,8 +242,9 @@ final class MeetingArchive: @unchecked Sendable {
         queue.sync { cachedTranscript(for: id) ?? [] }
     }
 
-    func saveTranscript(_ segments: [TranscriptSegment], for id: UUID) throws {
+    func saveTranscript(_ segments: [TranscriptSegment], for id: UUID, processingRun: UUID? = nil) throws {
         try queue.sync {
+            try requireProcessing(processingRun, for: id)
             guard FileManager.default.fileExists(atPath: folder(for: id).path) else { throw ArchiveError.meetingDeleted }
             let data = try encoder.encode(segments)
             try FilePersistence.write(data, to: folder(for: id).appendingPathComponent("transcript.json"))
@@ -383,8 +424,9 @@ final class MeetingArchive: @unchecked Sendable {
         }
     }
 
-    func saveSummary(_ markdown: String, for id: UUID, replacing expected: String? = nil) throws {
+    func saveSummary(_ markdown: String, for id: UUID, replacing expected: String? = nil, processingRun: UUID? = nil) throws {
         try queue.sync {
+            try requireProcessing(processingRun, for: id)
             guard FileManager.default.fileExists(atPath: folder(for: id).path) else { throw ArchiveError.meetingDeleted }
             let summaryURL = folder(for: id).appendingPathComponent("summary.md")
             if let expected {

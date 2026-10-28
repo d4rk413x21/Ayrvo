@@ -8,10 +8,14 @@ enum ProcessingPipeline {
     static func run(
         meeting: Meeting,
         archive: MeetingArchive,
+        processingRun: UUID,
         onProgress: @escaping @Sendable (String) -> Void,
         onSummary: @escaping @Sendable (SummaryUpdate) -> Void = { _ in }
     ) async -> ProcessingOutcome {
         let id = meeting.id
+        guard !Task.isCancelled, archive.isProcessing(id, run: processingRun) else {
+            return ProcessingOutcome(state: meeting.state)
+        }
         let storedTranscript = archive.transcript(for: id)
         let liveSegments = archive.liveTranscript(for: id)
         // ProcessingUseCase preserves the live draft in transcript.json before
@@ -60,7 +64,7 @@ enum ProcessingPipeline {
                 // fails, leaving `draft` nil lets the improvement pass save normally
                 // rather than the edit-guard (disk == draft.text) blocking it too.
                 do {
-                    try archive.saveSummary(text, for: id, replacing: expectedSummary)
+                    try archive.saveSummary(text, for: id, replacing: expectedSummary, processingRun: processingRun)
                     expectedSummary = text
                     draft = (text, provider)
                     outcome.summaryProvider = provider
@@ -81,6 +85,10 @@ enum ProcessingPipeline {
             }
         }
 
+        guard !Task.isCancelled, archive.isProcessing(id, run: processingRun) else {
+            return ProcessingOutcome(state: meeting.state)
+        }
+
         // 1. Transcribe. Honor the locale chosen for this meeting, even
         // if it differs from the system language used by the batch pipeline.
         let meetingLocale = TranscriptionLocales.storedLocale(forMeetingID: id, root: archive.root)
@@ -90,6 +98,10 @@ enum ProcessingPipeline {
         let micOut = channels.microphone
         let systemOut = channels.system
         notices += channels.notices
+
+        guard !Task.isCancelled, archive.isProcessing(id, run: processingRun) else {
+            return ProcessingOutcome(state: meeting.state)
+        }
 
         guard micOut != nil || systemOut != nil else {
             // No accurate transcript from this session. If a draft (and any live
@@ -118,9 +130,13 @@ enum ProcessingPipeline {
         let roster = resolved.roster
         notices += resolved.notices
         outcome.platformSpeakerAttribution = resolved.platformSpeakerAttribution
+        guard !Task.isCancelled, archive.isProcessing(id, run: processingRun) else {
+            return ProcessingOutcome(state: meeting.state)
+        }
+
         let offsetSegments = Self.offsetSegments(segments, by: appendOffset)
         let mergedSegments = priorSegments + offsetSegments
-        do { try archive.saveTranscript(mergedSegments, for: id) }
+        do { try archive.saveTranscript(mergedSegments, for: id, processingRun: processingRun) }
         catch {
             outcome.state = .failed
             outcome.notice = "The transcript could not be saved. Keep Ayrvo open and retry saving."
@@ -134,6 +150,10 @@ enum ProcessingPipeline {
         outcome.speakers = Self.speakersPresent(in: mergedSegments, from: allSpeakers)
         var labeled = meeting
         labeled.speakers = outcome.speakers ?? meeting.speakers
+
+        guard !Task.isCancelled, archive.isProcessing(id, run: processingRun) else {
+            return ProcessingOutcome(state: meeting.state)
+        }
 
         // 3. Improve the notes off the accurate transcript (or write them for the
         //    first time if there was no draft).
@@ -168,6 +188,10 @@ enum ProcessingPipeline {
                 onDelta: { onSummary(.streaming($0)) })
         }
 
+        guard !Task.isCancelled, archive.isProcessing(id, run: processingRun) else {
+            return ProcessingOutcome(state: meeting.state)
+        }
+
         // Track the summary text we persisted so the naming stage can reuse it
         // instead of re-reading `archive.summary(for:)` from disk. Stays nil in
         // the edit-guard-blocked and failure paths, where we still must read the
@@ -188,7 +212,7 @@ enum ProcessingPipeline {
                     .map { summary + "\n\n" + $0 }
                     ?? summary
                 do {
-                    try archive.saveSummary(annotated, for: id, replacing: expectedSummary)
+                    try archive.saveSummary(annotated, for: id, replacing: expectedSummary, processingRun: processingRun)
                     savedSummary = annotated
                     outcome.summaryProvider = provider
                 } catch MeetingArchive.ArchiveError.summaryChanged {
@@ -269,6 +293,7 @@ enum ProcessingPipeline {
     }
 
     static func appendOffset(meeting: Meeting, prior: [TranscriptSegment]) -> TimeInterval {
+        if let offset = meeting.audioStartOffset { return max(0, offset) }
         guard !prior.isEmpty else { return 0 }
         return max(meeting.duration, prior.map(\.end).max() ?? 0)
     }

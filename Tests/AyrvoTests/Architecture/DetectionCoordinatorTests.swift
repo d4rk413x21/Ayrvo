@@ -4,6 +4,32 @@ import Testing
 
 @MainActor
 struct DetectionCoordinatorTests {
+    @Test func testManualStopPreventsAutoResumeUntilTheMicrophoneIsReleased() async {
+        var settings = MockSettingsRepository()
+        settings.autoRecord = true
+        let detection = MockMeetingDetectionService()
+        let coordinator = MeetingDetectionCoordinator(detectionService: detection, settings: settings)
+        var recording = true
+        var starts = 0
+        coordinator.isRecording = { recording }
+        coordinator.onAutoRecord = { _ in starts += 1 }
+        coordinator.start()
+        let event = ArchitectureFixtures.micEvent()
+        detection.emit(event)
+        try? await Task.sleep(for: .milliseconds(50))
+        coordinator.recordingStoppedManually()
+        recording = false
+        detection.emit(event)
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(starts == 0)
+        let released = ArchitectureFixtures.micEvent(pid: event.pid, running: false)
+        detection.emit(released)
+        try? await Task.sleep(for: .milliseconds(50))
+        detection.emit(event)
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(starts == 1)
+        coordinator.stop()
+    }
     private func makeCoordinator(
         settings: MockSettingsRepository = MockSettingsRepository(),
         recording: MockRecordingService,
