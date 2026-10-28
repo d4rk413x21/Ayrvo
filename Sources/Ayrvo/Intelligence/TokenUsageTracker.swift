@@ -26,6 +26,9 @@ struct DailyTokenUsage: Codable, Identifiable, Equatable, Sendable {
 final class TokenUsageTracker: ObservableObject, @unchecked Sendable {
     static let shared = TokenUsageTracker()
 
+    /// CLI responses omit token counts; use the same four-character estimate for all requests.
+    static func estimatedTokens(_ text: String) -> Int { max(text.count / 4, 1) }
+
     private let defaults: UserDefaults
     private let key: String
     private let queue = DispatchQueue(label: "io.github.d4rk413x21.Ayrvo.token-usage", qos: .utility)

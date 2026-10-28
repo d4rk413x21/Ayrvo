@@ -84,12 +84,12 @@ private final class DelayedMockProcessingService: ProcessingService, @unchecked 
         meeting: Meeting,
         archive: MeetingArchive,
         onProgress: @escaping @Sendable (String) -> Void,
-        onSummary: @escaping @Sendable (ProcessingPipeline.SummaryUpdate) -> Void
-    ) async -> ProcessingPipeline.Outcome {
+        onSummary: @escaping @Sendable (SummaryUpdate) -> Void
+    ) async -> ProcessingOutcome {
         try? await Task.sleep(for: .milliseconds(50))
         onProgress("Done")
         onSummary(.done)
-        return ProcessingPipeline.Outcome(state: .ready)
+        return ProcessingOutcome(state: .ready)
     }
 
     func summarize(
@@ -98,7 +98,7 @@ private final class DelayedMockProcessingService: ProcessingService, @unchecked 
         userNotes: String,
         forceProvider: AIProvider? = nil,
         onDelta: (@Sendable (String) -> Void)?
-    ) async -> ProcessingPipeline.SummaryOutcome {
+    ) async -> SummaryOutcome {
         .success("", provider: "apple")
     }
 

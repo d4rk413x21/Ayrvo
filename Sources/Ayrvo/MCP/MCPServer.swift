@@ -387,7 +387,7 @@ final class MCPServer {
         }
         let transcript = TranscriptFormatter.plainText(segments, speakers: m.speakers)
         let snapshot = m // immutable capture for the @Sendable bridge closure
-        let outcome = blockingAwait { await ProcessingPipeline.summarize(meeting: snapshot, transcript: transcript) }
+        let outcome = blockingAwait { await MeetingSummarizer.summarize(meeting: snapshot, transcript: transcript) }
         switch outcome {
         case .success(let summary, let provider):
             try archive.saveSummary(summary, for: m.id)

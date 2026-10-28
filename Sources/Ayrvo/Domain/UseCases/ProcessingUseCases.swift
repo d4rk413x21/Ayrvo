@@ -8,7 +8,7 @@ final class ProcessMeetingUseCase {
     let notificationService: NotificationService
 
     var onProgress: ((UUID, String?) -> Void)?
-    var onSummaryUpdate: ((UUID, ProcessingPipeline.SummaryUpdate) -> Void)?
+    var onSummaryUpdate: ((UUID, SummaryUpdate) -> Void)?
     var onSummaryProgress: ((UUID, SummaryProgress?) -> Void)?
 
     init(
@@ -81,7 +81,7 @@ final class ProcessMeetingUseCase {
         }
     }
 
-    private func applySummaryUpdate(_ update: ProcessingPipeline.SummaryUpdate, for id: UUID) {
+    private func applySummaryUpdate(_ update: SummaryUpdate, for id: UUID) {
         switch update {
         case .streaming:
             onSummaryProgress?(id, .streaming)

@@ -5,8 +5,8 @@ struct ProcessingServiceImpl: ProcessingService {
         meeting: Meeting,
         archive: MeetingArchive,
         onProgress: @escaping @Sendable (String) -> Void,
-        onSummary: @escaping @Sendable (ProcessingPipeline.SummaryUpdate) -> Void
-    ) async -> ProcessingPipeline.Outcome {
+        onSummary: @escaping @Sendable (SummaryUpdate) -> Void
+    ) async -> ProcessingOutcome {
         await ProcessingPipeline.run(
             meeting: meeting,
             archive: archive,
@@ -20,8 +20,8 @@ struct ProcessingServiceImpl: ProcessingService {
         userNotes: String,
         forceProvider: AIProvider? = nil,
         onDelta: (@Sendable (String) -> Void)?
-    ) async -> ProcessingPipeline.SummaryOutcome {
-        await ProcessingPipeline.summarize(
+    ) async -> SummaryOutcome {
+        await MeetingSummarizer.summarize(
             meeting: meeting,
             transcript: transcript,
             userNotes: userNotes,
@@ -30,7 +30,7 @@ struct ProcessingServiceImpl: ProcessingService {
     }
 
     func generateTitle(summary: String, provider: String) async -> String? {
-        await ProcessingPipeline.generateTitle(summary: summary, provider: provider)
+        await MeetingTitleGenerator.generateTitle(summary: summary, provider: provider)
     }
 }
 

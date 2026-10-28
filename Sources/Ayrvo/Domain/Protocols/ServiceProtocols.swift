@@ -69,8 +69,8 @@ protocol ProcessingService: Sendable {
         meeting: Meeting,
         archive: MeetingArchive,
         onProgress: @escaping @Sendable (String) -> Void,
-        onSummary: @escaping @Sendable (ProcessingPipeline.SummaryUpdate) -> Void
-    ) async -> ProcessingPipeline.Outcome
+        onSummary: @escaping @Sendable (SummaryUpdate) -> Void
+    ) async -> ProcessingOutcome
 
     func summarize(
         meeting: Meeting,
@@ -78,7 +78,7 @@ protocol ProcessingService: Sendable {
         userNotes: String,
         forceProvider: AIProvider?,
         onDelta: (@Sendable (String) -> Void)?
-    ) async -> ProcessingPipeline.SummaryOutcome
+    ) async -> SummaryOutcome
 
     func generateTitle(summary: String, provider: String) async -> String?
 }
