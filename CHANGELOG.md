@@ -4,11 +4,72 @@ All notable changes to Ayrvo are documented here, including its history as Nutol
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Releases are cut by merging `develop` into `main`. The version lives in
-`VERSION` (single source of truth) and is stamped into `packaging/Info.plist`
-by `make app`. To cut a release:
+`VERSION` is the source of truth for the app version. See
+[Preparing a release](CONTRIBUTING.md#preparing-a-release) for the release workflow.
 
-1. Bump `VERSION` (e.g. `0.0.2`) and add a dated `## [0.0.2]` section below
+## [Unreleased]
+
+## [0.1.0] - 2026-10-28
+
+The first Ayrvo release brings a new identity and a meeting-to-development workflow
+built on the inherited Nutola codebase. This section covers changes since 0.0.2;
+older entries retain their original release history.
+
+### Added
+- Reviewable development task drafts extracted from meeting transcripts through a
+  supported AI CLI, with source quotations and explicit owner information.
+- Linear integration for selected task drafts, with saved issue links, export
+  checkpoints, and recovery from interrupted requests.
+- Read-only meeting CLI and MCP integration for working with the meeting library
+  from an assistant; MCP also supports editing and deletion.
+- Google Meet speaker-name attribution in Chrome using Accessibility and captions,
+  including Italian and English layouts and participant names from the People panel.
+- Parakeet Redux and Ultra for on-device final transcription, with download progress,
+  installed model sizes, and model removal controls.
+- Support for editor-bundled Claude Code and Codex binaries, OpenCode, and Mistral Vibe.
+
+### Changed
+- Rename the application, executable, source module, and assistant connector to
+  Ayrvo; introduce the blue-and-purple app icon and shared branding.
+- Refresh the macOS interface with native controls, Liquid Glass floating surfaces,
+  and clearer settings navigation while keeping document readers opaque.
+- Split large meeting, settings, digest, recording, and assistant views into focused
+  components; simplify audio capture, transcription, and processing responsibilities.
+- Migrate to Swift 6 and Swift Testing; align FluidAudio with version 0.17.7.
+- Rewrite project documentation around installation, recording, reviewed tasks,
+  privacy, and contribution workflows.
+- Preserve the existing bundle identifier, Keychain service, preferences, and
+  library directory so upgrading from Nutola does not require a data migration.
+
+### Fixed
+- Serialize recording startup, resume, and stop so a late startup cannot reactivate
+  a stopped session and another recording cannot start before teardown completes.
+- Keep elapsed duration and transcript timestamps consistent across resumed
+  recordings; avoid duplicated live segments during processing retries.
+- Restore previous capture files when a resumed recording fails or is cancelled,
+  and prevent stale processing runs from overwriting a newly resumed meeting.
+- Prevent automatic meeting detection from immediately restarting a manually stopped
+  recording while the same meeting remains active.
+- Finalize audio before transcription; recover empty microphone results, skip empty
+  system tracks, and replace live drafts with the completed transcript.
+- Improve microphone route-change recovery and speaker attribution when loudspeaker
+  playback bleeds into the microphone; retain acoustic evidence after decode errors.
+- Keep meeting titles, notes, and summary edits through store updates and failed
+  saves; expose retry notices and retain pending changes without stale rewrites.
+- Keep summary snapshots ordered and unique, and decision rows stable when
+  transcripts or speaker names change.
+- Preserve task-to-meeting provenance in daily digests instead of inferring it from
+  array positions, and include pending template saves in template lists.
+- Keep calendar month names on one line and recording controls available in meeting
+  layouts without a footer Resume button.
+
+### Removed
+- Inherited online note publishing, including `notes.nutola.to`, Gist publishing,
+  Cloudflare deployment code, and unused integration code.
+- Dead code and weak or unsafe tests, replaced where appropriate with deterministic
+  coverage for recording lifecycle, persistence, provider selection, and audio health.
+
+## [0.0.2]` section below
    that moves the `[Unreleased]` entries into the new version.
 2. Commit on `develop`.
 3. Merge `develop` → `main`.
