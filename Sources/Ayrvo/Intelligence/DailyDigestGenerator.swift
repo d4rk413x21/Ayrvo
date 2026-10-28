@@ -9,6 +9,7 @@ struct DailyDigest: Identifiable, Equatable, Sendable {
     let todayAgenda: [CalendarEventSummary]
     let summary: String
     let actionItems: [ActionItem]
+    let actionItemSources: [UUID: TaskSource]
 
     init(
         id: UUID = UUID(),
@@ -16,7 +17,8 @@ struct DailyDigest: Identifiable, Equatable, Sendable {
         yesterdayMeetings: [Meeting],
         todayAgenda: [CalendarEventSummary],
         summary: String,
-        actionItems: [ActionItem]
+        actionItems: [ActionItem],
+        actionItemSources: [UUID: TaskSource] = [:]
     ) {
         self.id = id
         self.date = date
@@ -24,6 +26,7 @@ struct DailyDigest: Identifiable, Equatable, Sendable {
         self.todayAgenda = todayAgenda
         self.summary = summary
         self.actionItems = actionItems
+        self.actionItemSources = actionItemSources
     }
 }
 
@@ -62,11 +65,15 @@ final class DailyDigestGenerator {
         // so the "(from Meeting N)" tags stay aligned with the meeting list.
         var perMeetingItems: [[ActionItem]] = []
         var flatItems: [ActionItem] = []
+        var sources: [UUID: TaskSource] = [:]
         for meeting in yesterdayMeetings {
             let summary = summaries[meeting.id] ?? ""
             let items = ActionItemParser.openItems(summary)
             perMeetingItems.append(items)
             flatItems.append(contentsOf: items)
+            for item in items {
+                sources[item.id] = TaskSource(meetingID: meeting.id, meetingTitle: meeting.title)
+            }
         }
 
         let summary = renderDigest(
@@ -82,7 +89,8 @@ final class DailyDigestGenerator {
             yesterdayMeetings: yesterdayMeetings,
             todayAgenda: agenda,
             summary: summary,
-            actionItems: flatItems
+            actionItems: flatItems,
+            actionItemSources: sources
         )
     }
 
@@ -102,11 +110,15 @@ final class DailyDigestGenerator {
 
         var perMeetingItems: [[ActionItem]] = []
         var flatItems: [ActionItem] = []
+        var sources: [UUID: TaskSource] = [:]
         for meeting in todayMeetings {
             let summary = summaries[meeting.id] ?? ""
             let items = ActionItemParser.openItems(summary)
             perMeetingItems.append(items)
             flatItems.append(contentsOf: items)
+            for item in items {
+                sources[item.id] = TaskSource(meetingID: meeting.id, meetingTitle: meeting.title)
+            }
         }
 
         let summary = renderTodayDigest(
@@ -122,7 +134,8 @@ final class DailyDigestGenerator {
             yesterdayMeetings: todayMeetings,
             todayAgenda: agenda,
             summary: summary,
-            actionItems: flatItems
+            actionItems: flatItems,
+            actionItemSources: sources
         )
     }
 
