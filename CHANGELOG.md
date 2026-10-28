@@ -16,6 +16,17 @@ by `make app`. To cut a release:
 
 ## [Unreleased]
 
+### Changed
+- Separate meeting headers, note presentation/editing, sharing, exports, and transcript/decision sections
+  into focused SwiftUI views; organize settings sections in dedicated files.
+
+### Fixed
+- Save personal notes only while local changes are pending; retain failed saves for retry
+  and avoid overwriting newer external edits during a later flush.
+- Keep decision row identity stable when a transcript is re-evaluated or a speaker is renamed.
+- Display meeting/preview notices in the document and keep Resume recording available
+  when no resume button is present in the footer.
+
 ## [0.0.2] - 2026-07-29
 
 ### Fixed

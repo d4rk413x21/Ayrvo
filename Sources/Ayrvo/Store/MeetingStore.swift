@@ -38,16 +38,24 @@ final class MeetingStore: ObservableObject {
 
     @discardableResult
     func upsert(_ meeting: Meeting) -> Meeting {
+        upsertSafely(meeting)
+        return meeting
+    }
+
+    @discardableResult
+    func upsertSafely(_ meeting: Meeting) -> Bool {
+        var saved = true
         do {
             try archive.save(meeting)
         } catch MeetingArchive.ArchiveError.meetingDeleted {
             // The meeting was deleted out from under a long-running task —
             // don't resurrect it in memory either.
             meetings.removeAll { $0.id == meeting.id }
-            return meeting
+            return false
         } catch {
             // Keep the latest edits visible while FilePersistence retains the failed write.
             PersistenceStatus.shared.report(error)
+            saved = false
         }
         if let i = meetings.firstIndex(where: { $0.id == meeting.id }) {
             meetings[i] = meeting
@@ -55,7 +63,7 @@ final class MeetingStore: ObservableObject {
             meetings.insert(meeting, at: 0)
             meetings.sort { $0.createdAt > $1.createdAt }
         }
-        return meeting
+        return saved
     }
 
     func delete(id: UUID) {

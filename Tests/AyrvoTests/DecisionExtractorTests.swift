@@ -48,6 +48,16 @@ struct DecisionExtractorTests {
 
     // MARK: - Metadata
 
+    @Test func testIdentitySurvivesRecalculationAndSpeakerRename() throws {
+        let segment = TranscriptSegment(speakerID: "s1", start: 10, end: 14, text: "we decided to launch next week")
+        let original = try #require(DecisionExtractor.extract(from: [segment], speakers: speakers).first)
+        let renamed = [Speaker(id: "s1", name: "Alicia")]
+        let updated = try #require(DecisionExtractor.extract(from: [segment], speakers: renamed).first)
+
+        #expect(original.id == updated.id)
+        #expect(updated.speakerName == "Alicia")
+    }
+
     @Test func testSpeakerNameResolved() {
         let segments = [TranscriptSegment(speakerID: "s1", start: 0, end: 1, text: "we should use the new framework")]
         let decisions = DecisionExtractor.extract(from: segments, speakers: speakers)
